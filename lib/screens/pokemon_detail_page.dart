@@ -1,0 +1,538 @@
+import 'package:flutter/material.dart';
+
+import '../models/pokemon_preview.dart';
+import '../services/pokemon_repository.dart';
+import '../widgets/pokemon_type_chips.dart';
+
+class PokemonDetailPage extends StatelessWidget {
+  const PokemonDetailPage({
+    super.key,
+    required this.pokemon,
+    required this.pokemonRepository,
+  });
+
+  final PokemonPreview pokemon;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(pokemon.name)),
+      body: FutureBuilder<PokemonPreview>(
+        future: pokemonRepository.fetchPokemonDetail(pokemon.id),
+        initialData: pokemon,
+        builder: (context, snapshot) {
+          final detail = snapshot.data ?? pokemon;
+
+          if (snapshot.hasError) {
+            return _PokemonDetailContent(
+              pokemon: pokemon,
+              pokemonRepository: pokemonRepository,
+              footer: const Text('No se pudo cargar el detalle completo'),
+            );
+          }
+
+          return _PokemonDetailContent(
+            pokemon: detail,
+            pokemonRepository: pokemonRepository,
+            footer: snapshot.connectionState == ConnectionState.waiting
+                ? const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : null,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PokemonDetailContent extends StatelessWidget {
+  const _PokemonDetailContent({
+    required this.pokemon,
+    required this.pokemonRepository,
+    this.footer,
+  });
+
+  final PokemonPreview pokemon;
+  final PokemonRepository pokemonRepository;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _PokemonDetailAvatar(pokemon: pokemon),
+        const SizedBox(height: 16),
+        Text(
+          pokemon.name,
+          style: textTheme.headlineMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: PokemonTypeChips(
+            types: pokemon.types,
+            alignment: WrapAlignment.center,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(pokemon.description, style: textTheme.bodyLarge),
+        const SizedBox(height: 24),
+        _PokemonFact(label: 'Altura', value: pokemon.height),
+        _PokemonFact(label: 'Peso', value: pokemon.weight),
+        const SizedBox(height: 24),
+        _AbilitiesSection(
+          abilities: pokemon.abilities,
+          pokemonRepository: pokemonRepository,
+        ),
+        const SizedBox(height: 24),
+        _StatsSection(stats: pokemon.stats),
+        const SizedBox(height: 24),
+        _MovesSection(
+          moves: pokemon.moves,
+          pokemonRepository: pokemonRepository,
+        ),
+        ?footer,
+      ],
+    );
+  }
+}
+
+class _AbilitiesSection extends StatelessWidget {
+  const _AbilitiesSection({
+    required this.abilities,
+    required this.pokemonRepository,
+  });
+
+  final List<PokemonAbility> abilities;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    if (abilities.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Habilidades', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final ability in abilities)
+              ActionChip(
+                label: Text(ability.name),
+                onPressed: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => _AbilityDialog(
+                      ability: ability,
+                      pokemonRepository: pokemonRepository,
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MovesSection extends StatelessWidget {
+  const _MovesSection({required this.moves, required this.pokemonRepository});
+
+  final List<PokemonMoveSummary> moves;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    if (moves.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final groupedMoves = <String, List<PokemonMoveSummary>>{};
+    for (final move in moves) {
+      groupedMoves.putIfAbsent(move.learnMethod, () => []).add(move);
+    }
+
+    for (final moveGroup in groupedMoves.values) {
+      moveGroup.sort(_compareMoves);
+    }
+
+    final orderedMethods = groupedMoves.keys.toList()..sort(_compareMethods);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Movimientos', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        for (final method in orderedMethods)
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text(method),
+            subtitle: Text('${groupedMoves[method]!.length} movimientos'),
+            children: [
+              for (final move in groupedMoves[method]!)
+                _MoveListTile(move: move, pokemonRepository: pokemonRepository),
+            ],
+          ),
+      ],
+    );
+  }
+
+  int _compareMoves(PokemonMoveSummary first, PokemonMoveSummary second) {
+    final levelCompare = first.level.compareTo(second.level);
+    if (levelCompare != 0) {
+      return levelCompare;
+    }
+
+    return first.name.compareTo(second.name);
+  }
+
+  int _compareMethods(String first, String second) {
+    final firstIndex = _methodOrder(first);
+    final secondIndex = _methodOrder(second);
+
+    if (firstIndex != secondIndex) {
+      return firstIndex.compareTo(secondIndex);
+    }
+
+    return first.compareTo(second);
+  }
+
+  int _methodOrder(String method) {
+    return switch (method) {
+      'Nivel' => 0,
+      'Maquina' => 1,
+      'Huevo' => 2,
+      'Tutor' => 3,
+      _ => 4,
+    };
+  }
+}
+
+class _MoveListTile extends StatelessWidget {
+  const _MoveListTile({required this.move, required this.pokemonRepository});
+
+  final PokemonMoveSummary move;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PokemonMoveDetail>(
+      future: pokemonRepository.fetchMoveDetail(move.apiName),
+      builder: (context, snapshot) {
+        final detail = snapshot.data;
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(move.name),
+          subtitle: Text(
+            detail == null
+                ? _moveSubtitle(move)
+                : '${_moveSubtitle(move)} - Tipo ${detail.type} - Clase '
+                      '${detail.damageClass} - Poder ${detail.power ?? '-'} - '
+                      'PP ${detail.pp}',
+          ),
+          trailing: const Icon(Icons.info_outline),
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) =>
+                  _MoveDialog(move: move, pokemonRepository: pokemonRepository),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _moveSubtitle(PokemonMoveSummary move) {
+    if (move.learnMethod == 'Nivel' && move.level > 0) {
+      return 'Nivel ${move.level}';
+    }
+
+    return move.learnMethod;
+  }
+}
+
+class _AbilityDialog extends StatelessWidget {
+  const _AbilityDialog({
+    required this.ability,
+    required this.pokemonRepository,
+  });
+
+  final PokemonAbility ability;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PokemonAbilityDetail>(
+      future: pokemonRepository.fetchAbilityDetail(ability.apiName),
+      builder: (context, snapshot) {
+        final detail = snapshot.data;
+
+        return AlertDialog(
+          title: Text(detail?.name ?? ability.name),
+          content: snapshot.connectionState == ConnectionState.waiting
+              ? const SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : snapshot.hasError || detail == null
+              ? const Text('No se pudo cargar la habilidad')
+              : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _DialogFact(
+                        label: 'Nombre en ingles',
+                        value: detail.englishName,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(detail.description),
+                      const SizedBox(height: 12),
+                      _DialogSection(
+                        title: 'Descripcion en ingles',
+                        value: detail.englishDescription,
+                      ),
+                      const SizedBox(height: 12),
+                      _DialogSection(
+                        title: 'Detalle tecnico',
+                        value: detail.technicalDetail,
+                      ),
+                    ],
+                  ),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MoveDialog extends StatelessWidget {
+  const _MoveDialog({required this.move, required this.pokemonRepository});
+
+  final PokemonMoveSummary move;
+  final PokemonRepository pokemonRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PokemonMoveDetail>(
+      future: pokemonRepository.fetchMoveDetail(move.apiName),
+      builder: (context, snapshot) {
+        final detail = snapshot.data;
+
+        return AlertDialog(
+          title: Text(detail?.name ?? move.name),
+          content: snapshot.connectionState == ConnectionState.waiting
+              ? const SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : snapshot.hasError || detail == null
+              ? const Text('No se pudo cargar el movimiento')
+              : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _DialogFact(
+                        label: 'Nombre en ingles',
+                        value: detail.englishName,
+                      ),
+                      _DialogFact(label: 'Tipo', value: detail.type),
+                      _DialogFact(label: 'Clase', value: detail.damageClass),
+                      _DialogFact(
+                        label: 'Poder',
+                        value: detail.power?.toString() ?? '-',
+                      ),
+                      _DialogFact(label: 'PP', value: '${detail.pp}'),
+                      _DialogFact(
+                        label: 'Precision',
+                        value: detail.accuracy == null
+                            ? '-'
+                            : '${detail.accuracy}%',
+                      ),
+                      const SizedBox(height: 12),
+                      Text(detail.description),
+                      const SizedBox(height: 12),
+                      _DialogSection(
+                        title: 'Detalle tecnico',
+                        value: detail.technicalDetail,
+                      ),
+                    ],
+                  ),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DialogFact extends StatelessWidget {
+  const _DialogFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text('$label: $value'),
+    );
+  }
+}
+
+class _DialogSection extends StatelessWidget {
+  const _DialogSection({required this.title, required this.value});
+
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Text(value),
+      ],
+    );
+  }
+}
+
+class _StatsSection extends StatelessWidget {
+  const _StatsSection({required this.stats});
+
+  final List<PokemonStat> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    if (stats.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Stats', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        for (final stat in stats) _StatRow(stat: stat),
+      ],
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.stat});
+
+  final PokemonStat stat;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedValue = (stat.value / 150).clamp(0.0, 1.0);
+    final statColor = _statColor(stat.value);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(width: 96, child: Text(stat.name)),
+          SizedBox(width: 36, child: Text('${stat.value}')),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 10,
+                value: normalizedValue,
+                color: statColor,
+                backgroundColor: statColor.withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _statColor(int value) {
+    if (value < 50) {
+      return const Color(0xFFE53935);
+    }
+
+    if (value < 80) {
+      return const Color(0xFFFB8C00);
+    }
+
+    if (value < 100) {
+      return const Color(0xFFFDD835);
+    }
+
+    return const Color(0xFF43A047);
+  }
+}
+
+class _PokemonDetailAvatar extends StatelessWidget {
+  const _PokemonDetailAvatar({required this.pokemon});
+
+  final PokemonPreview pokemon;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = pokemon.imageUrl;
+
+    if (imageUrl == null) {
+      return CircleAvatar(
+        radius: 44,
+        child: Text(
+          '#${pokemon.id.toString().padLeft(3, '0')}',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+      );
+    }
+
+    return Image.network(imageUrl, height: 160, fit: BoxFit.contain);
+  }
+}
+
+class _PokemonFact extends StatelessWidget {
+  const _PokemonFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      trailing: Text(value),
+    );
+  }
+}
