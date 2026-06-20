@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pokedex_codex/models/pokemon_preview.dart';
+import 'package:pokedex_codex/services/pokemon_cache_store.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('Fetches the full Pokemon catalog from PokeAPI responses', () async {
@@ -275,6 +278,32 @@ void main() {
     );
 
     expect(repository.fetchPokemonCatalog(), throwsException);
+  });
+
+  test('Reads the Pokemon catalog from local cache', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final cacheStore = SharedPreferencesPokemonCacheStore(preferences);
+    await cacheStore.writeCatalog(
+      limit: 1,
+      pokemon: const [
+        PokemonPreview(id: 25, name: 'Pikachu', types: ['Electrico']),
+      ],
+    );
+
+    final repository = PokeApiPokemonRepository(
+      cacheStore: cacheStore,
+      client: MockClient((request) async {
+        throw Exception('Network should not be called');
+      }),
+    );
+
+    final pokemon = await repository.fetchPokemonCatalog(limit: 1);
+
+    expect(pokemon, hasLength(1));
+    expect(pokemon.first.id, 25);
+    expect(pokemon.first.name, 'Pikachu');
+    expect(pokemon.first.types, ['Electrico']);
   });
 }
 

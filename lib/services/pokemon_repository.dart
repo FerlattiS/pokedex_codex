@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/pokemon_preview.dart';
+import 'pokemon_cache_store.dart';
 
 abstract class PokemonRepository {
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302});
@@ -17,12 +18,13 @@ abstract class PokemonRepository {
 }
 
 class PokeApiPokemonRepository implements PokemonRepository {
-  PokeApiPokemonRepository({http.Client? client, Uri? baseUri})
+  PokeApiPokemonRepository({http.Client? client, Uri? baseUri, this.cacheStore})
     : _client = client ?? http.Client(),
       _baseUri = baseUri ?? Uri.parse('https://pokeapi.co/api/v2');
 
   final http.Client _client;
   final Uri _baseUri;
+  final PokemonCacheStore? cacheStore;
   final Map<String, List<PokemonPreview>> _typeCache = {};
   final Map<int, PokemonPreview> _detailCache = {};
   final Map<String, PokemonAbilityDetail> _abilityCache = {};
@@ -35,6 +37,14 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final cachedCatalog = _catalogCache;
     if (cachedCatalog != null && _catalogLimit >= limit) {
       return cachedCatalog.take(limit).toList();
+    }
+
+    final storedCatalog = await cacheStore?.readCatalog(limit: limit);
+    if (storedCatalog != null) {
+      _catalogCache = storedCatalog;
+      _catalogLimit = limit;
+
+      return storedCatalog;
     }
 
     final listUri = _baseUri.replace(
@@ -57,6 +67,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
     _catalogCache = catalog;
     _catalogLimit = limit;
+    await cacheStore?.writeCatalog(limit: limit, pokemon: catalog);
 
     return catalog;
   }
@@ -121,6 +132,17 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return Future.value(cachedDetail);
     }
 
+    return _readOrFetchPokemonDetail(id);
+  }
+
+  Future<PokemonPreview> _readOrFetchPokemonDetail(int id) async {
+    final storedDetail = await cacheStore?.readDetail(id);
+    if (storedDetail != null) {
+      _detailCache[id] = storedDetail;
+
+      return storedDetail;
+    }
+
     return _fetchPokemonDetail(id);
   }
 
@@ -166,6 +188,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     );
 
     _detailCache[pokemon.id] = pokemon;
+    await cacheStore?.writeDetail(pokemon);
 
     return pokemon;
   }
@@ -175,6 +198,13 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final cachedAbility = _abilityCache[abilityName];
     if (cachedAbility != null) {
       return cachedAbility;
+    }
+
+    final storedAbility = await cacheStore?.readAbility(abilityName);
+    if (storedAbility != null) {
+      _abilityCache[abilityName] = storedAbility;
+
+      return storedAbility;
     }
 
     final response = await _client.get(
@@ -195,6 +225,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     );
 
     _abilityCache[abilityName] = detail;
+    await cacheStore?.writeAbility(abilityName, detail);
 
     return detail;
   }
@@ -204,6 +235,13 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final cachedMove = _moveCache[moveName];
     if (cachedMove != null) {
       return cachedMove;
+    }
+
+    final storedMove = await cacheStore?.readMove(moveName);
+    if (storedMove != null) {
+      _moveCache[moveName] = storedMove;
+
+      return storedMove;
     }
 
     final response = await _client.get(
@@ -230,6 +268,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     );
 
     _moveCache[moveName] = detail;
+    await cacheStore?.writeMove(moveName, detail);
 
     return detail;
   }

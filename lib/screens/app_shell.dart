@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../services/pokemon_repository.dart';
+import '../services/user_data_repository.dart';
+import 'about_us_page.dart';
 import 'daily_randommon_page.dart';
+import 'favorites_page.dart';
+import 'help_page.dart';
 import 'pokedex_home_page.dart';
 import 'placeholder_page.dart';
+import 'settings_page.dart';
 
 enum MainMenuDestination {
   pokedex,
+  favorites,
   aboutUs,
   help,
   settings,
@@ -19,11 +25,13 @@ class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
     required this.pokemonRepository,
+    required this.userDataRepository,
     required this.isDarkMode,
     required this.onDarkModeChanged,
   });
 
   final PokemonRepository pokemonRepository;
+  final UserDataRepository userDataRepository;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
 
@@ -51,21 +59,21 @@ class _AppShellState extends State<AppShell> {
       body: switch (_destination) {
         MainMenuDestination.pokedex => PokedexHomePage(
           pokemonRepository: widget.pokemonRepository,
+          userDataRepository: widget.userDataRepository,
         ),
-        MainMenuDestination.aboutUs => const PlaceholderPage(
-          title: 'About us',
-          message: 'Informacion del proyecto disponible mas adelante.',
+        MainMenuDestination.favorites => FavoritesPage(
+          pokemonRepository: widget.pokemonRepository,
+          userDataRepository: widget.userDataRepository,
         ),
-        MainMenuDestination.help => const PlaceholderPage(
-          title: 'Help',
-          message: 'Guia de uso disponible mas adelante.',
-        ),
-        MainMenuDestination.settings => const PlaceholderPage(
-          title: 'Settings',
-          message: 'Configuracion avanzada disponible mas adelante.',
+        MainMenuDestination.aboutUs => const AboutUsPage(),
+        MainMenuDestination.help => const HelpPage(),
+        MainMenuDestination.settings => SettingsPage(
+          isDarkMode: widget.isDarkMode,
+          onDarkModeChanged: widget.onDarkModeChanged,
         ),
         MainMenuDestination.dailyRandommon => DailyRandommonPage(
           pokemonRepository: widget.pokemonRepository,
+          userDataRepository: widget.userDataRepository,
         ),
         MainMenuDestination.pokedlePro => const PlaceholderPage(
           title: 'POKEDLE PRO',
@@ -111,6 +119,10 @@ class _MainMenuDrawer extends StatelessWidget {
           label: Text('Pokedex'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.star_outline),
+          label: Text('Favoritos'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.info_outline),
           label: Text('About us'),
         ),
@@ -150,6 +162,7 @@ extension on MainMenuDestination {
   String get title {
     return switch (this) {
       MainMenuDestination.pokedex => 'Pokedex Codex Pro',
+      MainMenuDestination.favorites => 'Favoritos',
       MainMenuDestination.aboutUs => 'About us',
       MainMenuDestination.help => 'Help',
       MainMenuDestination.settings => 'Settings',

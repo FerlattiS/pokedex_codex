@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
 import '../services/pokemon_repository.dart';
+import '../services/user_data_repository.dart';
 import '../widgets/pokemon_card.dart';
 import '../widgets/pokemon_grid_tile.dart';
 import 'pokemon_detail_page.dart';
@@ -40,9 +41,14 @@ const _generationFilters = <GenerationFilter>[
 ];
 
 class PokedexHomePage extends StatefulWidget {
-  const PokedexHomePage({super.key, required this.pokemonRepository});
+  const PokedexHomePage({
+    super.key,
+    required this.pokemonRepository,
+    required this.userDataRepository,
+  });
 
   final PokemonRepository pokemonRepository;
+  final UserDataRepository userDataRepository;
 
   @override
   State<PokedexHomePage> createState() => _PokedexHomePageState();
@@ -52,6 +58,7 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
   final Set<String> _selectedTypes = {};
   final TextEditingController _searchController = TextEditingController();
   List<PokemonPreview> _pokemon = [];
+  Set<int> _favoritePokemonIds = {};
   String _searchText = '';
   GenerationFilter? _selectedGeneration;
   String? _errorMessage;
@@ -63,6 +70,7 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
   void initState() {
     super.initState();
     _loadPokemon();
+    _loadFavoritePokemonIds();
   }
 
   @override
@@ -102,6 +110,34 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadFavoritePokemonIds() async {
+    final favoritePokemonIds = await widget.userDataRepository
+        .readFavoritePokemonIds();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _favoritePokemonIds = favoritePokemonIds;
+    });
+  }
+
+  Future<void> _toggleFavorite(PokemonPreview pokemon) async {
+    final nextFavorites = {..._favoritePokemonIds};
+    if (nextFavorites.contains(pokemon.id)) {
+      nextFavorites.remove(pokemon.id);
+    } else {
+      nextFavorites.add(pokemon.id);
+    }
+
+    setState(() {
+      _favoritePokemonIds = nextFavorites;
+    });
+
+    await widget.userDataRepository.writeFavoritePokemonIds(nextFavorites);
   }
 
   void _toggleType(String type) {
@@ -180,11 +216,15 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
                   : _viewMode == PokedexViewMode.list
                   ? _PokemonList(
                       pokemon: filteredPokemon,
+                      favoritePokemonIds: _favoritePokemonIds,
                       onPokemonSelected: _openPokemonDetail,
+                      onFavoriteToggled: _toggleFavorite,
                     )
                   : _PokemonGrid(
                       pokemon: filteredPokemon,
+                      favoritePokemonIds: _favoritePokemonIds,
                       onPokemonSelected: _openPokemonDetail,
+                      onFavoriteToggled: _toggleFavorite,
                     ),
             ),
           ],
@@ -193,15 +233,17 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
     );
   }
 
-  void _openPokemonDetail(PokemonPreview pokemon) {
-    Navigator.of(context).push(
+  Future<void> _openPokemonDetail(PokemonPreview pokemon) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PokemonDetailPage(
           pokemon: pokemon,
           pokemonRepository: widget.pokemonRepository,
+          userDataRepository: widget.userDataRepository,
         ),
       ),
     );
+    await _loadFavoritePokemonIds();
   }
 
   int _sortPokemon(PokemonPreview first, PokemonPreview second) {
@@ -428,10 +470,17 @@ class _ResultsHeader extends StatelessWidget {
 }
 
 class _PokemonList extends StatelessWidget {
-  const _PokemonList({required this.pokemon, required this.onPokemonSelected});
+  const _PokemonList({
+    required this.pokemon,
+    required this.favoritePokemonIds,
+    required this.onPokemonSelected,
+    required this.onFavoriteToggled,
+  });
 
   final List<PokemonPreview> pokemon;
+  final Set<int> favoritePokemonIds;
   final ValueChanged<PokemonPreview> onPokemonSelected;
+  final ValueChanged<PokemonPreview> onFavoriteToggled;
 
   @override
   Widget build(BuildContext context) {
@@ -440,17 +489,29 @@ class _PokemonList extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = pokemon[index];
 
-        return PokemonCard(pokemon: item, onTap: () => onPokemonSelected(item));
+        return PokemonCard(
+          pokemon: item,
+          isFavorite: favoritePokemonIds.contains(item.id),
+          onTap: () => onPokemonSelected(item),
+          onFavoritePressed: () => onFavoriteToggled(item),
+        );
       },
     );
   }
 }
 
 class _PokemonGrid extends StatelessWidget {
-  const _PokemonGrid({required this.pokemon, required this.onPokemonSelected});
+  const _PokemonGrid({
+    required this.pokemon,
+    required this.favoritePokemonIds,
+    required this.onPokemonSelected,
+    required this.onFavoriteToggled,
+  });
 
   final List<PokemonPreview> pokemon;
+  final Set<int> favoritePokemonIds;
   final ValueChanged<PokemonPreview> onPokemonSelected;
+  final ValueChanged<PokemonPreview> onFavoriteToggled;
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +536,9 @@ class _PokemonGrid extends StatelessWidget {
             final item = pokemon[index];
             return PokemonGridTile(
               pokemon: item,
+              isFavorite: favoritePokemonIds.contains(item.id),
               onTap: () => onPokemonSelected(item),
+              onFavoritePressed: () => onFavoriteToggled(item),
             );
           },
         );

@@ -2,39 +2,99 @@ import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
 import '../services/pokemon_repository.dart';
+import '../services/user_data_repository.dart';
 import '../widgets/pokemon_type_chips.dart';
 
-class PokemonDetailPage extends StatelessWidget {
+class PokemonDetailPage extends StatefulWidget {
   const PokemonDetailPage({
     super.key,
     required this.pokemon,
     required this.pokemonRepository,
+    required this.userDataRepository,
   });
 
   final PokemonPreview pokemon;
   final PokemonRepository pokemonRepository;
+  final UserDataRepository userDataRepository;
+
+  @override
+  State<PokemonDetailPage> createState() => _PokemonDetailPageState();
+}
+
+class _PokemonDetailPageState extends State<PokemonDetailPage> {
+  var _isFavorite = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavoriteState();
+  }
+
+  Future<void> _loadFavoriteState() async {
+    final favoritePokemonIds = await widget.userDataRepository
+        .readFavoritePokemonIds();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isFavorite = favoritePokemonIds.contains(widget.pokemon.id);
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    final favoritePokemonIds = await widget.userDataRepository
+        .readFavoritePokemonIds();
+
+    if (favoritePokemonIds.contains(widget.pokemon.id)) {
+      favoritePokemonIds.remove(widget.pokemon.id);
+    } else {
+      favoritePokemonIds.add(widget.pokemon.id);
+    }
+
+    await widget.userDataRepository.writeFavoritePokemonIds(favoritePokemonIds);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isFavorite = favoritePokemonIds.contains(widget.pokemon.id);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(pokemon.name)),
+      appBar: AppBar(
+        title: Text(widget.pokemon.name),
+        actions: [
+          IconButton(
+            tooltip: _isFavorite ? 'Quitar favorito' : 'Agregar favorito',
+            icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
+            color: _isFavorite ? Colors.amber : null,
+            onPressed: _toggleFavorite,
+          ),
+        ],
+      ),
       body: FutureBuilder<PokemonPreview>(
-        future: pokemonRepository.fetchPokemonDetail(pokemon.id),
-        initialData: pokemon,
+        future: widget.pokemonRepository.fetchPokemonDetail(widget.pokemon.id),
+        initialData: widget.pokemon,
         builder: (context, snapshot) {
-          final detail = snapshot.data ?? pokemon;
+          final detail = snapshot.data ?? widget.pokemon;
 
           if (snapshot.hasError) {
             return _PokemonDetailContent(
-              pokemon: pokemon,
-              pokemonRepository: pokemonRepository,
+              pokemon: widget.pokemon,
+              pokemonRepository: widget.pokemonRepository,
               footer: const Text('No se pudo cargar el detalle completo'),
             );
           }
 
           return _PokemonDetailContent(
             pokemon: detail,
-            pokemonRepository: pokemonRepository,
+            pokemonRepository: widget.pokemonRepository,
             footer: snapshot.connectionState == ConnectionState.waiting
                 ? const Padding(
                     padding: EdgeInsets.only(top: 16),

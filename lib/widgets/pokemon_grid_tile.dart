@@ -4,10 +4,18 @@ import '../models/pokemon_preview.dart';
 import 'pokemon_type_colors.dart';
 
 class PokemonGridTile extends StatelessWidget {
-  const PokemonGridTile({super.key, required this.pokemon, this.onTap});
+  const PokemonGridTile({
+    super.key,
+    required this.pokemon,
+    required this.isFavorite,
+    this.onTap,
+    this.onFavoritePressed,
+  });
 
   final PokemonPreview pokemon;
+  final bool isFavorite;
   final VoidCallback? onTap;
+  final VoidCallback? onFavoritePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +31,7 @@ class PokemonGridTile extends StatelessWidget {
           gradient: pokemonTypeGradient(pokemon.types),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(3),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: colorScheme.surface,
@@ -34,12 +42,49 @@ class PokemonGridTile extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(child: _PokemonImage(pokemon: pokemon)),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(6),
+                              gradient: pokemonTypeGradient(pokemon.types),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Center(
+                                  child: _PokemonImage(pokemon: pokemon),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: IconButton.filledTonal(
+                            constraints: const BoxConstraints.tightFor(
+                              width: 32,
+                              height: 32,
+                            ),
+                            padding: EdgeInsets.zero,
+                            tooltip: isFavorite
+                                ? 'Quitar favorito'
+                                : 'Agregar favorito',
+                            icon: Icon(
+                              isFavorite ? Icons.star : Icons.star_border,
+                              size: 18,
+                            ),
+                            color: isFavorite ? Colors.amber : null,
+                            onPressed: onFavoritePressed,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 6),

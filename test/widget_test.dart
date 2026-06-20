@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
+import 'package:pokedex_codex/services/user_data_repository.dart';
 
 void main() {
   final pokemonRepository = _FakePokemonRepository();
@@ -51,9 +52,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_filterChip('Agua'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Busqueda y filtros'));
+    await tester.pumpAndSettle();
 
     expect(find.text('2 Pokemon encontrados'), findsOneWidget);
     expect(find.text('Squirtle'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Wooper'), 120);
     expect(find.text('Wooper'), findsOneWidget);
     expect(find.text('Pikachu'), findsNothing);
   });
@@ -116,8 +120,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nombre Z-A').last);
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Busqueda y filtros'));
+    await tester.pumpAndSettle();
 
     final squirtleTop = tester.getTopLeft(find.text('Squirtle'));
+    await tester.scrollUntilVisible(find.text('Pikachu'), 120);
     final pikachuTop = tester.getTopLeft(find.text('Pikachu'));
 
     expect(squirtleTop.dy, lessThan(pikachuTop.dy));
@@ -172,6 +179,31 @@ void main() {
     expect(find.text('Bulbasaur'), findsOneWidget);
   });
 
+  testWidgets('Marks Pokemon as favorite from the Pokedex', (
+    WidgetTester tester,
+  ) async {
+    final userDataRepository = MemoryUserDataRepository();
+
+    await tester.pumpWidget(
+      MyApp(
+        pokemonRepository: pokemonRepository,
+        userDataRepository: userDataRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Agregar favorito').first);
+    await tester.pumpAndSettle();
+
+    expect(await userDataRepository.readFavoritePokemonIds(), contains(1));
+    expect(find.byTooltip('Quitar favorito'), findsOneWidget);
+
+    await tester.tap(find.text('Bulbasaur'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Quitar favorito'), findsOneWidget);
+  });
+
   testWidgets('Shows the main menu options', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
@@ -180,6 +212,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pokedex'), findsOneWidget);
+    expect(find.text('Favoritos'), findsOneWidget);
     expect(find.text('About us'), findsOneWidget);
     expect(find.text('Help'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
@@ -189,7 +222,32 @@ void main() {
     expect(find.text('Modo oscuro'), findsOneWidget);
   });
 
-  testWidgets('Opens placeholder pages from the main menu', (
+  testWidgets('Opens favorite Pokemon from the main menu', (
+    WidgetTester tester,
+  ) async {
+    final userDataRepository = MemoryUserDataRepository();
+    await userDataRepository.writeFavoritePokemonIds({1, 7});
+
+    await tester.pumpWidget(
+      MyApp(
+        pokemonRepository: pokemonRepository,
+        userDataRepository: userDataRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Favoritos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Favoritos'), findsOneWidget);
+    expect(find.text('Bulbasaur'), findsOneWidget);
+    expect(find.text('Squirtle'), findsOneWidget);
+    expect(find.text('Charmander'), findsNothing);
+  });
+
+  testWidgets('Opens About us and Help pages from the main menu', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
@@ -200,17 +258,40 @@ void main() {
     await tester.tap(find.text('About us'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Informacion del proyecto disponible mas adelante.'),
-      findsOneWidget,
-    );
+    expect(find.text('Enfoque'), findsOneWidget);
+    expect(find.text('Roadmap'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Help'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Guia de uso disponible mas adelante.'), findsOneWidget);
+    expect(find.text('Guia rapida'), findsOneWidget);
+    expect(find.text('Buscar Pokemon'), findsOneWidget);
+    expect(find.text('Detalles'), findsOneWidget);
+  });
+
+  testWidgets('Opens settings from the main menu', (WidgetTester tester) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preferencias'), findsOneWidget);
+    expect(find.text('Datos locales'), findsOneWidget);
+    expect(find.text('Cache de PokeAPI'), findsOneWidget);
+    expect(
+      find.text('Se guarda localmente en este dispositivo.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.dark_mode), findsOneWidget);
   });
 
   testWidgets('Opens Daily Randommon from the main menu', (
