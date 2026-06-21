@@ -33,6 +33,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pantallas reales de About us y Help.
 - Cliente Supabase opcional por variables de entorno.
 - Migracion inicial de Supabase para favoritos, notas y equipos con RLS.
+- Repositorio remoto base para datos de usuario en Supabase.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 
@@ -41,7 +42,8 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Ajustes de accesibilidad y responsive fino para web y Android.
 - Pantallas de equipos y notas usando el repositorio local actual.
 - Autenticacion con Supabase.
-- Repositorio remoto para sincronizar favoritos con Supabase.
+- Conectar el repositorio remoto de Supabase al flujo autenticado.
+- Sincronizacion de favoritos con Supabase.
 - Sincronizacion de equipos con Supabase.
 - Sincronizacion de notas personales con Supabase.
 - Configuracion de proyecto Supabase en dashboard.
@@ -61,6 +63,34 @@ flutter test
 La app esta preparada para crear un cliente Supabase sin hardcodear claves. Por
 ahora se usa el paquete Dart `supabase` para evitar cargar plugins web de
 autenticacion que todavia no estamos usando.
+
+### Funcion en el proyecto
+
+Supabase es la capa de backend para datos propios del usuario. PokeAPI sigue
+siendo la fuente de datos publica de Pokemon; Supabase no reemplaza ese catalogo.
+
+Responsabilidades de Supabase:
+
+- Autenticar usuarios cuando se agregue login.
+- Guardar favoritos, notas personales y equipos por usuario.
+- Proteger esos datos con RLS para que cada usuario lea y escriba solo lo suyo.
+- Servir como punto de sincronizacion entre web, Android y futuros dispositivos.
+- Mantener datos de perfil cuando esa pantalla exista.
+
+Fuera de alcance para Supabase:
+
+- No almacena el catalogo completo de Pokemon.
+- No reemplaza la cache local de PokeAPI.
+- No guarda claves privadas ni service role keys dentro de la app.
+- No resuelve reglas de UI; la app sigue validando y presentando la experiencia.
+
+Estado actual de la integracion:
+
+- El cliente Supabase se crea solo si existen variables `--dart-define`.
+- La app sigue usando persistencia local mientras no exista usuario autenticado.
+- Ya existe una migracion SQL para tablas y politicas RLS.
+- Ya existe un repositorio remoto base para favoritos, notas y equipos.
+- Falta conectar ese repositorio al flujo real de autenticacion y sincronizacion.
 
 Para iniciar Supabase en la app, pasa la URL del proyecto y la publishable key:
 
