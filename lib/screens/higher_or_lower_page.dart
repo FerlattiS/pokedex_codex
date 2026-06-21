@@ -27,7 +27,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   var _isLoadingNext = false;
   int? _selectedPokemonId;
 
-  Future<void> _loadRound() async {
+  Future<void> _loadRound({PokemonPreview? carryPokemon}) async {
     final catalog = _catalog.isEmpty
         ? await widget.pokemonRepository.fetchPokemonCatalog()
         : _catalog;
@@ -35,18 +35,33 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
       throw Exception('Catalogo insuficiente');
     }
 
-    var leftIndex = _random.nextInt(catalog.length);
-    var rightIndex = _random.nextInt(catalog.length);
-    while (rightIndex == leftIndex) {
-      rightIndex = _random.nextInt(catalog.length);
-    }
+    PokemonPreview left;
+    PokemonPreview right;
 
-    final left = await widget.pokemonRepository.fetchPokemonDetail(
-      catalog[leftIndex].id,
-    );
-    final right = await widget.pokemonRepository.fetchPokemonDetail(
-      catalog[rightIndex].id,
-    );
+    if (carryPokemon == null) {
+      var leftIndex = _random.nextInt(catalog.length);
+      var rightIndex = _random.nextInt(catalog.length);
+      while (rightIndex == leftIndex) {
+        rightIndex = _random.nextInt(catalog.length);
+      }
+
+      left = await widget.pokemonRepository.fetchPokemonDetail(
+        catalog[leftIndex].id,
+      );
+      right = await widget.pokemonRepository.fetchPokemonDetail(
+        catalog[rightIndex].id,
+      );
+    } else {
+      left = carryPokemon;
+      var rightIndex = _random.nextInt(catalog.length);
+      while (catalog[rightIndex].id == carryPokemon.id) {
+        rightIndex = _random.nextInt(catalog.length);
+      }
+
+      right = await widget.pokemonRepository.fetchPokemonDetail(
+        catalog[rightIndex].id,
+      );
+    }
 
     if (!mounted) {
       return;
@@ -96,9 +111,11 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
       return;
     }
 
+    final carryPokemon = _isRevealed ? _roundWinner() : null;
+
     setState(() {
       _isLoadingNext = true;
-      _loadFuture = _loadRound();
+      _loadFuture = _loadRound(carryPokemon: carryPokemon);
     });
   }
 
@@ -210,6 +227,16 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
 
   int _battleStatTotal(PokemonPreview pokemon) {
     return pokemon.stats.fold(0, (sum, stat) => sum + stat.value);
+  }
+
+  PokemonPreview? _roundWinner() {
+    final left = _leftPokemon;
+    final right = _rightPokemon;
+    if (left == null || right == null) {
+      return null;
+    }
+
+    return _battleStatTotal(left) >= _battleStatTotal(right) ? left : right;
   }
 }
 

@@ -527,7 +527,7 @@ class _GuessCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -543,7 +543,7 @@ class _GuessCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _PokedleResultGrid(results: results),
           ],
         ),
@@ -758,8 +758,8 @@ class _GuessImage extends StatelessWidget {
     final imageUrl = pokemon.imageUrl;
 
     return Container(
-      width: 56,
-      height: 56,
+      width: 48,
+      height: 48,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
@@ -786,32 +786,19 @@ class _PokedleResultGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final crossAxisCount = width >= 760
-            ? 5
-            : width >= 500
-            ? 4
-            : width >= 360
-            ? 3
-            : 2;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: results.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: width < 360 ? 1.42 : 1.55,
-          ),
-          itemBuilder: (context, index) {
-            return _ResultCell(result: results[index]);
-          },
-        );
-      },
+    return SizedBox(
+      height: 58,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var index = 0; index < results.length; index++) ...[
+              SizedBox(width: 92, child: _ResultCell(result: results[index])),
+              if (index != results.length - 1) const SizedBox(width: 6),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -841,7 +828,7 @@ class _ResultCell extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               color: color.withValues(alpha: 0.22),
               child: Text(
                 result.label,
@@ -855,7 +842,7 @@ class _ResultCell extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
@@ -864,7 +851,7 @@ class _ResultCell extends StatelessWidget {
                       child: Text(
                         result.value,
                         textAlign: TextAlign.center,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
@@ -877,7 +864,7 @@ class _ResultCell extends StatelessWidget {
                         result.direction == _PokedleDirection.higher
                             ? Icons.arrow_upward
                             : Icons.arrow_downward,
-                        size: 15,
+                        size: 14,
                         color: color,
                       ),
                     ],

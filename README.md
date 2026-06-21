@@ -26,7 +26,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pantalla real de Settings con preferencias y estado de datos locales.
 - Daily Randommon funcional.
 - POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, color, forma, modos Gen 1-2/Todos y dificultad facil/dificil.
-- Higher or Lower inicial para elegir cual de 2 Pokemon tiene mayor battle stats total y mantener racha.
+- Higher or Lower para elegir cual Pokemon tiene mayor battle stats total, mantener racha y enfrentar al ganador contra un nuevo rival.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
@@ -44,6 +44,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Repositorio remoto base para datos de usuario en Supabase.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
+- Guia de publicacion web/mobile en `PUBLICACION.md`.
 
 ## Falta por hacer
 
