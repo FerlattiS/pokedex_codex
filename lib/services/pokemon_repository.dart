@@ -159,7 +159,9 @@ class PokeApiPokemonRepository implements PokemonRepository {
   @override
   Future<PokemonPreview> fetchPokemonMetadata(int id) async {
     final cachedDetail = _detailCache[id];
-    if (cachedDetail != null && cachedDetail.evolutionLine.isNotEmpty) {
+    if (cachedDetail != null &&
+        cachedDetail.generation != null &&
+        cachedDetail.evolutionLine.isNotEmpty) {
       return cachedDetail;
     }
 
@@ -168,16 +170,18 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return cachedMetadata;
     }
 
-    final speciesUri = _baseUri.replace(
-      path: '${_baseUri.path}/pokemon-species/$id',
-    );
-    final speciesResponse = await _client.get(speciesUri);
+    final speciesData = await _fetchSpeciesDataForPokemon(id);
+    final speciesResponse = speciesData.response;
 
     if (speciesResponse.statusCode != 200) {
       throw Exception('No se pudo cargar la metadata del Pokemon');
     }
 
-    final metadata = await _readPokemonMetadata(speciesResponse, id);
+    final metadata = await _readPokemonMetadata(
+      speciesResponse,
+      id,
+      pokemonApiName: speciesData.pokemonApiName,
+    );
     _metadataCache[id] = metadata;
 
     return metadata;
@@ -195,7 +199,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
   Future<PokemonPreview> _readOrFetchPokemonDetail(int id) async {
     final storedDetail = await cacheStore?.readDetail(id);
-    if (storedDetail != null) {
+    if (storedDetail != null && storedDetail.generation != null) {
       _detailCache[id] = storedDetail;
 
       return storedDetail;
@@ -206,15 +210,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
   Future<PokemonPreview> _fetchPokemonDetail(int id) async {
     final detailUri = _baseUri.replace(path: '${_baseUri.path}/pokemon/$id');
-    final speciesUri = _baseUri.replace(
-      path: '${_baseUri.path}/pokemon-species/$id',
-    );
-    final responses = await Future.wait([
-      _client.get(detailUri),
-      _client.get(speciesUri),
-    ]);
-    final response = responses[0];
-    final speciesResponse = responses[1];
+    final response = await _client.get(detailUri);
 
     if (response.statusCode != 200) {
       throw Exception('No se pudo cargar el Pokemon');
@@ -229,10 +225,16 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final otherSprites = sprites['other'] as Map<String, dynamic>?;
     final officialArtwork =
         otherSprites?['official-artwork'] as Map<String, dynamic>?;
+    final species = data['species'] as Map<String, dynamic>?;
+    final speciesUrl = species?['url'] as String?;
+    final speciesResponse = speciesUrl == null
+        ? http.Response('{}', 404)
+        : await _client.get(Uri.parse(speciesUrl));
 
     final metadata = await _readPokemonMetadata(
       speciesResponse,
       data['id'] as int,
+      pokemonApiName: data['name'] as String,
     );
     final pokemon = PokemonPreview(
       id: data['id'] as int,
@@ -250,6 +252,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
       isLegendary: metadata.isLegendary,
       isMythical: metadata.isMythical,
       evolvesByItem: metadata.evolvesByItem,
+      generation: metadata.generation,
       evolutionStage: metadata.evolutionStage,
       evolutionLine: metadata.evolutionLine,
     );
@@ -351,8 +354,38 @@ class PokeApiPokemonRepository implements PokemonRepository {
       id: id,
       name: _formatName(item['name'] as String),
       types: types.map(_formatTypeName).toList(),
+      generation: _readGenerationFromPokemonId(id),
       imageUrl:
           'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png',
+    );
+  }
+
+  Future<_SpeciesData> _fetchSpeciesDataForPokemon(int id) async {
+    final speciesUri = _baseUri.replace(
+      path: '${_baseUri.path}/pokemon-species/$id',
+    );
+    final speciesResponse = await _client.get(speciesUri);
+    if (speciesResponse.statusCode == 200) {
+      return _SpeciesData(response: speciesResponse);
+    }
+
+    final pokemonUri = _baseUri.replace(path: '${_baseUri.path}/pokemon/$id');
+    final pokemonResponse = await _client.get(pokemonUri);
+    if (pokemonResponse.statusCode != 200) {
+      return _SpeciesData(response: speciesResponse);
+    }
+
+    final pokemonData =
+        jsonDecode(pokemonResponse.body) as Map<String, dynamic>;
+    final species = pokemonData['species'] as Map<String, dynamic>?;
+    final speciesUrl = species?['url'] as String?;
+    if (speciesUrl == null) {
+      return _SpeciesData(response: speciesResponse);
+    }
+
+    return _SpeciesData(
+      response: await _client.get(Uri.parse(speciesUrl)),
+      pokemonApiName: pokemonData['name'] as String?,
     );
   }
 
@@ -449,8 +482,9 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
   Future<PokemonPreview> _readPokemonMetadata(
     http.Response speciesResponse,
-    int pokemonId,
-  ) async {
+    int pokemonId, {
+    String? pokemonApiName,
+  }) async {
     if (speciesResponse.statusCode != 200) {
       return PokemonPreview(id: pokemonId, name: '#$pokemonId');
     }
@@ -489,6 +523,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
       isLegendary: speciesData['is_legendary'] as bool? ?? false,
       isMythical: speciesData['is_mythical'] as bool? ?? false,
       evolvesByItem: evolvesByItem,
+      generation: _readGeneration(speciesData, pokemonApiName, pokemonId),
       evolutionStage: evolutionStage,
       evolutionLine: evolutionLine,
     );
@@ -805,6 +840,79 @@ class PokeApiPokemonRepository implements PokemonRepository {
     };
   }
 
+  int _readGeneration(
+    Map<String, dynamic> speciesData,
+    String? pokemonApiName,
+    int pokemonId,
+  ) {
+    return _readGenerationFromFormName(pokemonApiName) ??
+        _readGenerationFromNamedResource(speciesData['generation']) ??
+        _readGenerationFromPokemonId(pokemonId);
+  }
+
+  int? _readGenerationFromFormName(String? pokemonApiName) {
+    final name = pokemonApiName?.toLowerCase();
+    if (name == null) {
+      return null;
+    }
+
+    if (name.contains('-mega') ||
+        name.contains('-primal') ||
+        name.contains('-eternal')) {
+      return 6;
+    }
+
+    if (name.contains('-alola') || name.contains('-totem')) {
+      return 7;
+    }
+
+    if (name.contains('-galar') ||
+        name.contains('-hisui') ||
+        name.contains('-gmax') ||
+        name.contains('-starter') ||
+        name.contains('-battle-bond')) {
+      return 8;
+    }
+
+    if (name.contains('-paldea') || name.contains('-bloodmoon')) {
+      return 9;
+    }
+
+    return null;
+  }
+
+  int? _readGenerationFromNamedResource(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final data = value as Map<String, dynamic>;
+    return switch (data['name'] as String?) {
+      'generation-i' => 1,
+      'generation-ii' => 2,
+      'generation-iii' => 3,
+      'generation-iv' => 4,
+      'generation-v' => 5,
+      'generation-vi' => 6,
+      'generation-vii' => 7,
+      'generation-viii' => 8,
+      'generation-ix' => 9,
+      _ => null,
+    };
+  }
+
+  int _readGenerationFromPokemonId(int id) {
+    if (id <= 151) return 1;
+    if (id <= 251) return 2;
+    if (id <= 386) return 3;
+    if (id <= 493) return 4;
+    if (id <= 649) return 5;
+    if (id <= 721) return 6;
+    if (id <= 809) return 7;
+    if (id <= 905) return 8;
+    return 9;
+  }
+
   String _formatName(String value) {
     if (value.isEmpty) {
       return value;
@@ -867,4 +975,11 @@ class _EvolutionNodeInfo {
   final bool hasChildren;
   final List<Map<String, dynamic>> outgoingDetails;
   final int totalNodes;
+}
+
+class _SpeciesData {
+  const _SpeciesData({required this.response, this.pokemonApiName});
+
+  final http.Response response;
+  final String? pokemonApiName;
 }

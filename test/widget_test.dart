@@ -499,7 +499,9 @@ void main() {
     await tester.tap(find.text('Probar'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('#004 Charmander'), findsOneWidget);
+    expect(find.text('Charmander'), findsOneWidget);
+    expect(find.textContaining('#004'), findsNothing);
+    expect(find.byIcon(Icons.catching_pokemon), findsOneWidget);
     expect(find.text('Tipo 1'), findsOneWidget);
     expect(find.text('Stat top'), findsOneWidget);
 
@@ -633,11 +635,31 @@ class _FakePokemonRepository implements PokemonRepository {
   @override
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302}) async {
     return const [
-      PokemonPreview(id: 1, name: 'Bulbasaur', types: ['Planta', 'Veneno']),
-      PokemonPreview(id: 4, name: 'Charmander', types: ['Fuego']),
-      PokemonPreview(id: 7, name: 'Squirtle', types: ['Agua']),
-      PokemonPreview(id: 25, name: 'Pikachu', types: ['Electrico']),
-      PokemonPreview(id: 152, name: 'Chikorita', types: ['Planta']),
+      PokemonPreview(
+        id: 1,
+        name: 'Bulbasaur',
+        types: ['Planta', 'Veneno'],
+        generation: 1,
+      ),
+      PokemonPreview(
+        id: 4,
+        name: 'Charmander',
+        types: ['Fuego'],
+        generation: 1,
+      ),
+      PokemonPreview(id: 7, name: 'Squirtle', types: ['Agua'], generation: 1),
+      PokemonPreview(
+        id: 25,
+        name: 'Pikachu',
+        types: ['Electrico'],
+        generation: 1,
+      ),
+      PokemonPreview(
+        id: 152,
+        name: 'Chikorita',
+        types: ['Planta'],
+        generation: 2,
+      ),
     ];
   }
 
@@ -674,17 +696,20 @@ class _FakePokemonRepository implements PokemonRepository {
         name: 'Pikachu',
         isLegendary: true,
         evolvesByItem: true,
+        generation: 1,
         evolutionStage: PokemonEvolutionStage.middle,
       ),
       152 => const PokemonPreview(
         id: 152,
         name: 'Chikorita',
         isMythical: true,
+        generation: 2,
         evolutionStage: PokemonEvolutionStage.base,
       ),
       _ => PokemonPreview(
         id: id,
         name: _pokemonName(id),
+        generation: id >= 152 ? 2 : 1,
         evolutionStage: PokemonEvolutionStage.base,
       ),
     };
@@ -709,6 +734,7 @@ class _FakePokemonRepository implements PokemonRepository {
         description: 'Prefiere las cosas calientes.',
         height: '0.6 m',
         weight: '8.5 kg',
+        generation: 1,
         abilities: [PokemonAbility(name: 'Mar llamas', apiName: 'blaze')],
         stats: [
           PokemonStat(name: 'HP', value: 39),
@@ -742,6 +768,7 @@ class _FakePokemonRepository implements PokemonRepository {
         weight: '6.0 kg',
         isLegendary: true,
         evolvesByItem: true,
+        generation: 1,
         evolutionStage: PokemonEvolutionStage.middle,
         stats: [
           PokemonStat(name: 'HP', value: 35),
@@ -776,6 +803,7 @@ class _FakePokemonRepository implements PokemonRepository {
         description: 'Una semilla crece en su lomo desde que nace.',
         height: '0.7 m',
         weight: '6.9 kg',
+        generation: 1,
         abilities: [PokemonAbility(name: 'Espesura', apiName: 'overgrow')],
         stats: [
           PokemonStat(name: 'HP', value: 45),

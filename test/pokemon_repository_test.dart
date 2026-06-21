@@ -59,7 +59,7 @@ void main() {
   test('Fetches Pokemon detail from PokeAPI responses', () async {
     final repository = PokeApiPokemonRepository(
       client: MockClient((request) async {
-        if (request.url.path.endsWith('/pokemon-species/1')) {
+        if (request.url.path.contains('/pokemon-species/1')) {
           return http.Response('''
             {
               "flavor_text_entries": [
@@ -78,6 +78,9 @@ void main() {
           {
             "id": 1,
             "name": "bulbasaur",
+            "species": {
+              "url": "https://pokeapi.co/api/v2/pokemon-species/1/"
+            },
             "height": 7,
             "weight": 69,
             "abilities": [
@@ -148,6 +151,7 @@ void main() {
     expect(pokemon.height, '0.7 m');
     expect(pokemon.weight, '6.9 kg');
     expect(pokemon.imageUrl, 'https://example.com/art.png');
+    expect(pokemon.generation, 1);
     expect(pokemon.abilities.first.name, 'Overgrow');
     expect(pokemon.abilities.first.apiName, 'overgrow');
     expect(pokemon.moves.first.name, 'Tackle');
@@ -155,6 +159,119 @@ void main() {
     expect(pokemon.moves.first.level, 1);
     expect(pokemon.stats.first.name, 'HP');
     expect(pokemon.stats.first.value, 45);
+  });
+
+  test('Fetches alternative form detail from base species metadata', () async {
+    final repository = PokeApiPokemonRepository(
+      client: MockClient((request) async {
+        if (request.url.path.contains('/pokemon/10106')) {
+          return http.Response('''
+            {
+              "id": 10106,
+              "name": "dugtrio-alola",
+              "species": {
+                "url": "https://pokeapi.co/api/v2/pokemon-species/51/"
+              },
+              "height": 7,
+              "weight": 666,
+              "abilities": [],
+              "moves": [],
+              "stats": [
+                {
+                  "base_stat": 110,
+                  "stat": {
+                    "name": "speed"
+                  }
+                }
+              ],
+              "types": [
+                {
+                  "type": {
+                    "name": "ground"
+                  }
+                },
+                {
+                  "type": {
+                    "name": "steel"
+                  }
+                }
+              ],
+              "sprites": {
+                "front_default": "https://example.com/dugtrio-alola.png",
+                "other": {
+                  "official-artwork": {
+                    "front_default": "https://example.com/dugtrio-alola-art.png"
+                  }
+                }
+              }
+            }
+            ''', 200);
+        }
+
+        if (request.url.path.contains('/pokemon-species/51')) {
+          return http.Response('''
+            {
+              "name": "dugtrio",
+              "is_legendary": false,
+              "is_mythical": false,
+              "generation": {
+                "name": "generation-i"
+              },
+              "flavor_text_entries": [
+                {
+                  "flavor_text": "Forma un trio bajo tierra.",
+                  "language": {
+                    "name": "es"
+                  }
+                }
+              ],
+              "evolution_chain": {
+                "url": "https://pokeapi.co/api/v2/evolution-chain/20/"
+              }
+            }
+            ''', 200);
+        }
+
+        return http.Response('''
+          {
+            "chain": {
+              "species": {
+                "name": "diglett",
+                "url": "https://pokeapi.co/api/v2/pokemon-species/50/"
+              },
+              "evolves_to": [
+                {
+                  "species": {
+                    "name": "dugtrio",
+                    "url": "https://pokeapi.co/api/v2/pokemon-species/51/"
+                  },
+                  "evolution_details": [
+                    {
+                      "trigger": {
+                        "name": "level-up"
+                      },
+                      "min_level": 26
+                    }
+                  ],
+                  "evolves_to": []
+                }
+              ]
+            }
+          }
+          ''', 200);
+      }),
+    );
+
+    final pokemon = await repository.fetchPokemonDetail(10106);
+
+    expect(pokemon.name, 'Dugtrio-alola');
+    expect(pokemon.generation, 7);
+    expect(pokemon.evolutionStage, PokemonEvolutionStage.finalStage);
+    expect(pokemon.evolutionLine.map((step) => step.name), [
+      'Diglett',
+      'Dugtrio',
+    ]);
+    expect(pokemon.imageUrl, 'https://example.com/dugtrio-alola-art.png');
   });
 
   test('Fetches Pokemon metadata from species and evolution chain', () async {
@@ -166,6 +283,9 @@ void main() {
               "name": "pikachu",
               "is_legendary": true,
               "is_mythical": false,
+              "generation": {
+                "name": "generation-i"
+              },
               "evolution_chain": {
                 "url": "https://pokeapi.co/api/v2/evolution-chain/10/"
               }
@@ -224,6 +344,7 @@ void main() {
     final metadata = await repository.fetchPokemonMetadata(25);
 
     expect(metadata.name, 'Pikachu');
+    expect(metadata.generation, 1);
     expect(metadata.isLegendary, isTrue);
     expect(metadata.isMythical, isFalse);
     expect(metadata.evolvesByItem, isTrue);

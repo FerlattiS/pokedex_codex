@@ -302,9 +302,17 @@ class _GuessCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '#${guess.id.toString().padLeft(3, '0')} ${guess.name}',
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              children: [
+                _GuessImage(pokemon: guess),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    guess.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -324,24 +332,30 @@ class _GuessCard extends StatelessWidget {
     return [
       _compareType('Tipo 1', _typeAt(guess, 0), target.types),
       _compareType('Tipo 2', _typeAt(guess, 1), target.types, position: 1),
-      _compareText('Gen', _generation(guess.id), _generation(target.id)),
-      _compareText(
+      _compareNumber(
+        'Gen',
+        guess.generation,
+        target.generation,
+        (value) => 'Gen ${value.toInt()}',
+      ),
+      _compareNumber(
         'Etapa',
-        guess.evolutionStage.label,
-        target.evolutionStage.label,
+        _stageNumber(guess),
+        _stageNumber(target),
+        (value) => '${value.toInt()}',
       ),
       _compareText('Rareza', _rarity(guess), _rarity(target)),
       _compareNumber(
         'Altura',
         _metricValue(guess.height),
         _metricValue(target.height),
-        'm',
+        (value) => '${value.toStringAsFixed(1)} m',
       ),
       _compareNumber(
         'Peso',
         _metricValue(guess.weight),
         _metricValue(target.weight),
-        'kg',
+        (value) => '${value.toStringAsFixed(1)} kg',
       ),
       _compareText('Stat top', _highestStat(guess), _highestStat(target)),
     ];
@@ -381,44 +395,30 @@ class _GuessCard extends StatelessWidget {
 
   _PokedleResult _compareNumber(
     String label,
-    double? guessValue,
-    double? targetValue,
-    String unit,
+    num? guessValue,
+    num? targetValue,
+    String Function(num value) format,
   ) {
     if (guessValue == null || targetValue == null) {
       return _PokedleResult(label, '-', _PokedleStatus.wrong);
     }
 
     if (guessValue == targetValue) {
-      return _PokedleResult(
-        label,
-        '${guessValue.toStringAsFixed(1)} $unit',
-        _PokedleStatus.correct,
-      );
+      return _PokedleResult(label, format(guessValue), _PokedleStatus.correct);
     }
 
-    final direction = targetValue > guessValue ? '↑' : '↓';
     return _PokedleResult(
       label,
-      '${guessValue.toStringAsFixed(1)} $unit $direction',
+      format(guessValue),
       _PokedleStatus.wrong,
+      direction: targetValue > guessValue
+          ? _PokedleDirection.higher
+          : _PokedleDirection.lower,
     );
   }
 
   String _typeAt(PokemonPreview pokemon, int index) {
     return pokemon.types.length > index ? pokemon.types[index] : '-';
-  }
-
-  String _generation(int id) {
-    if (id <= 151) return 'Gen 1';
-    if (id <= 251) return 'Gen 2';
-    if (id <= 386) return 'Gen 3';
-    if (id <= 493) return 'Gen 4';
-    if (id <= 649) return 'Gen 5';
-    if (id <= 721) return 'Gen 6';
-    if (id <= 809) return 'Gen 7';
-    if (id <= 905) return 'Gen 8';
-    return 'Gen 9';
   }
 
   String _rarity(PokemonPreview pokemon) {
@@ -452,6 +452,102 @@ class _GuessCard extends StatelessWidget {
 
     return stats.first.name;
   }
+
+  int? _stageNumber(PokemonPreview pokemon) {
+    final lineStage = _stageNumberFromEvolutionLine(pokemon);
+    if (lineStage != null) {
+      return lineStage;
+    }
+
+    return switch (pokemon.evolutionStage) {
+      PokemonEvolutionStage.standalone || PokemonEvolutionStage.base => 1,
+      PokemonEvolutionStage.middle => 2,
+      PokemonEvolutionStage.finalStage =>
+        pokemon.evolutionLine.length <= 2 ? 2 : 3,
+      PokemonEvolutionStage.unknown => null,
+    };
+  }
+
+  int? _stageNumberFromEvolutionLine(PokemonPreview pokemon) {
+    if (pokemon.evolutionLine.isEmpty) {
+      return null;
+    }
+
+    final normalizedName = _normalizeEvolutionName(pokemon.name);
+    final baseFormName = _normalizeBaseFormName(pokemon.name);
+
+    for (var index = 0; index < pokemon.evolutionLine.length; index++) {
+      final step = pokemon.evolutionLine[index];
+      final stepName = _normalizeEvolutionName(step.name);
+      if (step.id == pokemon.id ||
+          stepName == normalizedName ||
+          stepName == baseFormName) {
+        return (index + 1).clamp(1, 3);
+      }
+    }
+
+    return null;
+  }
+
+  String _normalizeEvolutionName(String value) {
+    return value.toLowerCase().replaceAll(' ', '-');
+  }
+
+  String _normalizeBaseFormName(String value) {
+    var normalized = _normalizeEvolutionName(value);
+    const suffixes = [
+      '-mega-x',
+      '-mega-y',
+      '-bloodmoon',
+      '-alola',
+      '-galar',
+      '-hisui',
+      '-paldea',
+      '-mega',
+      '-gmax',
+      '-totem',
+    ];
+
+    for (final suffix in suffixes) {
+      if (normalized.endsWith(suffix)) {
+        normalized = normalized.substring(0, normalized.length - suffix.length);
+        break;
+      }
+    }
+
+    return normalized;
+  }
+}
+
+class _GuessImage extends StatelessWidget {
+  const _GuessImage({required this.pokemon});
+
+  final PokemonPreview pokemon;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = pokemon.imageUrl;
+
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: imageUrl == null
+          ? const Icon(Icons.catching_pokemon)
+          : Image.network(
+              imageUrl,
+              key: ValueKey('pokedleGuessImage-${pokemon.id}'),
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.catching_pokemon);
+              },
+            ),
+    );
+  }
 }
 
 class _ResultChip extends StatelessWidget {
@@ -480,11 +576,29 @@ class _ResultChip extends StatelessWidget {
         children: [
           Text(result.label, style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: 4),
-          Text(
-            result.value,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  result.value,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (result.direction != null) ...[
+                const SizedBox(width: 2),
+                Icon(
+                  result.direction == _PokedleDirection.higher
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward,
+                  size: 14,
+                  color: color,
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -493,11 +607,14 @@ class _ResultChip extends StatelessWidget {
 }
 
 class _PokedleResult {
-  const _PokedleResult(this.label, this.value, this.status);
+  const _PokedleResult(this.label, this.value, this.status, {this.direction});
 
   final String label;
   final String value;
   final _PokedleStatus status;
+  final _PokedleDirection? direction;
 }
 
 enum _PokedleStatus { correct, partial, wrong }
+
+enum _PokedleDirection { higher, lower }
