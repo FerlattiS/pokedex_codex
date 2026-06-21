@@ -157,6 +157,85 @@ void main() {
     expect(pokemon.stats.first.value, 45);
   });
 
+  test('Fetches Pokemon metadata from species and evolution chain', () async {
+    final repository = PokeApiPokemonRepository(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/pokemon-species/25')) {
+          return http.Response('''
+            {
+              "name": "pikachu",
+              "is_legendary": true,
+              "is_mythical": false,
+              "evolution_chain": {
+                "url": "https://pokeapi.co/api/v2/evolution-chain/10/"
+              }
+            }
+            ''', 200);
+        }
+
+        return http.Response('''
+          {
+            "chain": {
+              "species": {
+                "name": "pichu",
+                "url": "https://pokeapi.co/api/v2/pokemon-species/172/"
+              },
+              "evolves_to": [
+                {
+                  "species": {
+                    "name": "pikachu",
+                    "url": "https://pokeapi.co/api/v2/pokemon-species/25/"
+                  },
+                  "evolution_details": [
+                    {
+                      "trigger": {
+                        "name": "level-up"
+                      },
+                      "min_happiness": 220
+                    }
+                  ],
+                  "evolves_to": [
+                    {
+                      "species": {
+                        "name": "raichu",
+                        "url": "https://pokeapi.co/api/v2/pokemon-species/26/"
+                      },
+                      "evolution_details": [
+                        {
+                          "trigger": {
+                            "name": "use-item"
+                          },
+                          "item": {
+                            "name": "thunder-stone"
+                          }
+                        }
+                      ],
+                      "evolves_to": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          ''', 200);
+      }),
+    );
+
+    final metadata = await repository.fetchPokemonMetadata(25);
+
+    expect(metadata.name, 'Pikachu');
+    expect(metadata.isLegendary, isTrue);
+    expect(metadata.isMythical, isFalse);
+    expect(metadata.evolvesByItem, isTrue);
+    expect(metadata.evolutionStage, PokemonEvolutionStage.middle);
+    expect(metadata.evolutionLine.map((step) => step.name), [
+      'Pichu',
+      'Pikachu',
+      'Raichu',
+    ]);
+    expect(metadata.evolutionLine.last.method, 'Usar Thunder stone');
+  });
+
   test('Fetches ability detail from PokeAPI responses', () async {
     final repository = PokeApiPokemonRepository(
       client: MockClient((request) async {

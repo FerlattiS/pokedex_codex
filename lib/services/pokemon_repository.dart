@@ -5,10 +5,33 @@ import 'package:http/http.dart' as http;
 import '../models/pokemon_preview.dart';
 import 'pokemon_cache_store.dart';
 
+const _typeApiNames = <String>[
+  'normal',
+  'fire',
+  'water',
+  'electric',
+  'grass',
+  'ice',
+  'fighting',
+  'poison',
+  'ground',
+  'flying',
+  'psychic',
+  'bug',
+  'rock',
+  'ghost',
+  'dragon',
+  'dark',
+  'steel',
+  'fairy',
+];
+
 abstract class PokemonRepository {
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302});
 
   Future<List<PokemonPreview>> fetchPokemonByTypes(List<String> typeNames);
+
+  Future<PokemonPreview> fetchPokemonMetadata(int id);
 
   Future<PokemonPreview> fetchPokemonDetail(int id);
 
@@ -27,6 +50,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
   final PokemonCacheStore? cacheStore;
   final Map<String, List<PokemonPreview>> _typeCache = {};
   final Map<int, PokemonPreview> _detailCache = {};
+  final Map<int, PokemonPreview> _metadataCache = {};
   final Map<String, PokemonAbilityDetail> _abilityCache = {};
   final Map<String, PokemonMoveDetail> _moveCache = {};
   List<PokemonPreview>? _catalogCache;
@@ -60,9 +84,11 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final results = data['results'] as List<dynamic>;
 
+    final typesByPokemonId = await _fetchCatalogTypesByPokemonId(limit);
     final catalog = results.map((result) {
       final item = result as Map<String, dynamic>;
-      return _previewFromListItem(item);
+      final id = _readIdFromUrl(item['url'] as String);
+      return _previewFromListItem(item, types: typesByPokemonId[id] ?? []);
     }).toList();
 
     _catalogCache = catalog;
@@ -100,7 +126,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
         }
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final pokemon = data['pokemon'] as List<dynamic>;
+        final pokemon = data['pokemon'] as List<dynamic>? ?? [];
 
         return pokemon.map((slot) {
           final slotData = slot as Map<String, dynamic>;
@@ -117,12 +143,44 @@ class PokeApiPokemonRepository implements PokemonRepository {
       for (final pokemon in typeSets.expand((items) => items))
         if (commonIds.contains(pokemon.id)) pokemon.id: pokemon,
     };
-    final filtered = byId.values.toList()
-      ..sort((first, second) => first.id.compareTo(second.id));
+    final catalogById = {
+      for (final pokemon in _catalogCache ?? <PokemonPreview>[])
+        pokemon.id: pokemon,
+    };
+    final filtered = byId.values.map((pokemon) {
+      return catalogById[pokemon.id] ?? pokemon;
+    }).toList()..sort((first, second) => first.id.compareTo(second.id));
 
     _typeCache[cacheKey] = filtered;
 
     return filtered;
+  }
+
+  @override
+  Future<PokemonPreview> fetchPokemonMetadata(int id) async {
+    final cachedDetail = _detailCache[id];
+    if (cachedDetail != null && cachedDetail.evolutionLine.isNotEmpty) {
+      return cachedDetail;
+    }
+
+    final cachedMetadata = _metadataCache[id];
+    if (cachedMetadata != null) {
+      return cachedMetadata;
+    }
+
+    final speciesUri = _baseUri.replace(
+      path: '${_baseUri.path}/pokemon-species/$id',
+    );
+    final speciesResponse = await _client.get(speciesUri);
+
+    if (speciesResponse.statusCode != 200) {
+      throw Exception('No se pudo cargar la metadata del Pokemon');
+    }
+
+    final metadata = await _readPokemonMetadata(speciesResponse, id);
+    _metadataCache[id] = metadata;
+
+    return metadata;
   }
 
   @override
@@ -172,6 +230,10 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final officialArtwork =
         otherSprites?['official-artwork'] as Map<String, dynamic>?;
 
+    final metadata = await _readPokemonMetadata(
+      speciesResponse,
+      data['id'] as int,
+    );
     final pokemon = PokemonPreview(
       id: data['id'] as int,
       name: _formatName(data['name'] as String),
@@ -185,9 +247,15 @@ class PokeApiPokemonRepository implements PokemonRepository {
       imageUrl:
           officialArtwork?['front_default'] as String? ??
           sprites['front_default'] as String?,
+      isLegendary: metadata.isLegendary,
+      isMythical: metadata.isMythical,
+      evolvesByItem: metadata.evolvesByItem,
+      evolutionStage: metadata.evolutionStage,
+      evolutionLine: metadata.evolutionLine,
     );
 
     _detailCache[pokemon.id] = pokemon;
+    _metadataCache[pokemon.id] = metadata;
     await cacheStore?.writeDetail(pokemon);
 
     return pokemon;
@@ -288,6 +356,41 @@ class PokeApiPokemonRepository implements PokemonRepository {
     );
   }
 
+  Future<Map<int, List<String>>> _fetchCatalogTypesByPokemonId(
+    int limit,
+  ) async {
+    final typesByPokemonId = <int, List<String>>{};
+    await Future.wait(
+      _typeApiNames.map((typeName) async {
+        final typeUri = _baseUri.replace(
+          path: '${_baseUri.path}/type/$typeName',
+        );
+        final response = await _client.get(typeUri);
+
+        if (response.statusCode != 200) {
+          return;
+        }
+
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final pokemon = data['pokemon'] as List<dynamic>? ?? [];
+        for (final slot in pokemon) {
+          final slotData = slot as Map<String, dynamic>;
+          final pokemonData = slotData['pokemon'] as Map<String, dynamic>;
+          final id = _readIdFromUrl(pokemonData['url'] as String);
+          if (id > limit) {
+            continue;
+          }
+
+          typesByPokemonId
+              .putIfAbsent(id, () => [])
+              .add(_formatTypeName(typeName));
+        }
+      }),
+    );
+
+    return typesByPokemonId;
+  }
+
   String _readTypeName(dynamic typeSlot) {
     final typeData = typeSlot as Map<String, dynamic>;
     final type = typeData['type'] as Map<String, dynamic>;
@@ -342,6 +445,259 @@ class PokeApiPokemonRepository implements PokemonRepository {
     );
 
     return _cleanDescription(entry['flavor_text'] as String);
+  }
+
+  Future<PokemonPreview> _readPokemonMetadata(
+    http.Response speciesResponse,
+    int pokemonId,
+  ) async {
+    if (speciesResponse.statusCode != 200) {
+      return PokemonPreview(id: pokemonId, name: '#$pokemonId');
+    }
+
+    final speciesData =
+        jsonDecode(speciesResponse.body) as Map<String, dynamic>;
+    final speciesName = speciesData['name'] as String? ?? '#$pokemonId';
+    final evolutionChain =
+        speciesData['evolution_chain'] as Map<String, dynamic>?;
+    final evolutionChainUrl = evolutionChain?['url'] as String?;
+    var evolutionLine = <PokemonEvolutionStep>[
+      PokemonEvolutionStep(
+        id: pokemonId,
+        name: _formatName(speciesName),
+        method: 'Base',
+      ),
+    ];
+    var evolutionStage = PokemonEvolutionStage.unknown;
+    var evolvesByItem = false;
+
+    if (evolutionChainUrl != null) {
+      final evolutionResponse = await _client.get(Uri.parse(evolutionChainUrl));
+      if (evolutionResponse.statusCode == 200) {
+        final evolutionData =
+            jsonDecode(evolutionResponse.body) as Map<String, dynamic>;
+        final chain = evolutionData['chain'] as Map<String, dynamic>;
+        evolutionLine = _readEvolutionLine(chain);
+        evolutionStage = _readEvolutionStage(chain, speciesName);
+        evolvesByItem = _readEvolvesByItem(chain, speciesName);
+      }
+    }
+
+    return PokemonPreview(
+      id: pokemonId,
+      name: _formatName(speciesName),
+      isLegendary: speciesData['is_legendary'] as bool? ?? false,
+      isMythical: speciesData['is_mythical'] as bool? ?? false,
+      evolvesByItem: evolvesByItem,
+      evolutionStage: evolutionStage,
+      evolutionLine: evolutionLine,
+    );
+  }
+
+  List<PokemonEvolutionStep> _readEvolutionLine(Map<String, dynamic> chain) {
+    final steps = <PokemonEvolutionStep>[];
+
+    void visit(Map<String, dynamic> node, String method) {
+      final species = node['species'] as Map<String, dynamic>;
+      steps.add(
+        PokemonEvolutionStep(
+          id: _readIdFromUrl(species['url'] as String),
+          name: _formatName(species['name'] as String),
+          method: method,
+        ),
+      );
+
+      final evolvesTo = node['evolves_to'] as List<dynamic>? ?? [];
+      for (final child in evolvesTo) {
+        final childNode = child as Map<String, dynamic>;
+        final details = childNode['evolution_details'] as List<dynamic>? ?? [];
+        final detail = details.isEmpty
+            ? null
+            : details.cast<Map<String, dynamic>>().first;
+        visit(childNode, _formatEvolutionMethod(detail));
+      }
+    }
+
+    visit(chain, 'Base');
+
+    if (steps.length == 1) {
+      return [
+        PokemonEvolutionStep(
+          id: steps.first.id,
+          name: steps.first.name,
+          method: 'Sin evolucion',
+        ),
+      ];
+    }
+
+    return steps;
+  }
+
+  PokemonEvolutionStage _readEvolutionStage(
+    Map<String, dynamic> chain,
+    String speciesName,
+  ) {
+    final info = _findEvolutionNode(chain, speciesName);
+    if (info == null) {
+      return PokemonEvolutionStage.unknown;
+    }
+
+    if (info.totalNodes == 1) {
+      return PokemonEvolutionStage.standalone;
+    }
+
+    if (info.depth == 0) {
+      return PokemonEvolutionStage.base;
+    }
+
+    if (info.hasChildren) {
+      return PokemonEvolutionStage.middle;
+    }
+
+    return PokemonEvolutionStage.finalStage;
+  }
+
+  bool _readEvolvesByItem(Map<String, dynamic> chain, String speciesName) {
+    final info = _findEvolutionNode(chain, speciesName);
+    if (info == null) {
+      return false;
+    }
+
+    return info.outgoingDetails.any(_evolutionDetailUsesItem);
+  }
+
+  _EvolutionNodeInfo? _findEvolutionNode(
+    Map<String, dynamic> chain,
+    String speciesName,
+  ) {
+    var totalNodes = 0;
+    _EvolutionNodeInfo? result;
+
+    void visit(Map<String, dynamic> node, int depth) {
+      totalNodes += 1;
+      final species = node['species'] as Map<String, dynamic>;
+      final evolvesTo = node['evolves_to'] as List<dynamic>? ?? [];
+
+      if (species['name'] == speciesName) {
+        result = _EvolutionNodeInfo(
+          depth: depth,
+          hasChildren: evolvesTo.isNotEmpty,
+          outgoingDetails: [
+            for (final child in evolvesTo)
+              ...((child as Map<String, dynamic>)['evolution_details']
+                          as List<dynamic>? ??
+                      [])
+                  .cast<Map<String, dynamic>>(),
+          ],
+          totalNodes: 0,
+        );
+      }
+
+      for (final child in evolvesTo) {
+        visit(child as Map<String, dynamic>, depth + 1);
+      }
+    }
+
+    visit(chain, 0);
+
+    final found = result;
+    if (found == null) {
+      return null;
+    }
+
+    return _EvolutionNodeInfo(
+      depth: found.depth,
+      hasChildren: found.hasChildren,
+      outgoingDetails: found.outgoingDetails,
+      totalNodes: totalNodes,
+    );
+  }
+
+  bool _evolutionDetailUsesItem(Map<String, dynamic> detail) {
+    final trigger = detail['trigger'] as Map<String, dynamic>?;
+    return trigger?['name'] == 'use-item' ||
+        detail['item'] != null ||
+        detail['held_item'] != null;
+  }
+
+  String _formatEvolutionMethod(Map<String, dynamic>? detail) {
+    if (detail == null) {
+      return 'Metodo no disponible';
+    }
+
+    final trigger = detail['trigger'] as Map<String, dynamic>?;
+    final triggerName = trigger?['name'] as String?;
+    final item = _readNamedResource(detail['item']);
+    final heldItem = _readNamedResource(detail['held_item']);
+    final knownMove = _readNamedResource(detail['known_move']);
+    final location = _readNamedResource(detail['location']);
+    final minLevel = detail['min_level'] as int?;
+    final minHappiness = detail['min_happiness'] as int?;
+    final minBeauty = detail['min_beauty'] as int?;
+    final minAffection = detail['min_affection'] as int?;
+    final timeOfDay = detail['time_of_day'] as String? ?? '';
+    final parts = <String>[];
+
+    switch (triggerName) {
+      case 'level-up':
+        if (minLevel != null) {
+          parts.add('Nivel $minLevel');
+        } else {
+          parts.add('Subir nivel');
+        }
+      case 'use-item':
+        parts.add(item == null ? 'Usar objeto' : 'Usar $item');
+      case 'trade':
+        parts.add(
+          heldItem == null ? 'Intercambio' : 'Intercambio con $heldItem',
+        );
+      case 'shed':
+        parts.add('Espacio libre en equipo');
+      case 'spin':
+        parts.add('Giro especial');
+      case 'tower-of-darkness':
+        parts.add('Torre de las Sombras');
+      case 'tower-of-waters':
+        parts.add('Torre de las Aguas');
+      case 'three-critical-hits':
+        parts.add('Tres golpes criticos');
+      case 'take-damage':
+        parts.add('Tras recibir dano');
+      case 'other':
+        parts.add('Metodo especial');
+      default:
+        parts.add(_formatName(triggerName ?? 'Metodo especial'));
+    }
+
+    if (knownMove != null) {
+      parts.add('con $knownMove');
+    }
+    if (location != null) {
+      parts.add('en $location');
+    }
+    if (minHappiness != null) {
+      parts.add('amistad $minHappiness+');
+    }
+    if (minBeauty != null) {
+      parts.add('belleza $minBeauty+');
+    }
+    if (minAffection != null) {
+      parts.add('afecto $minAffection+');
+    }
+    if (timeOfDay.isNotEmpty) {
+      parts.add(timeOfDay == 'day' ? 'de dia' : 'de noche');
+    }
+
+    return parts.join(' - ');
+  }
+
+  String? _readNamedResource(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final data = value as Map<String, dynamic>;
+    return _formatName((data['name'] as String).replaceAll('-', ' '));
   }
 
   String _cleanDescription(String value) {
@@ -497,4 +853,18 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
     return int.parse(segments.last);
   }
+}
+
+class _EvolutionNodeInfo {
+  const _EvolutionNodeInfo({
+    required this.depth,
+    required this.hasChildren,
+    required this.outgoingDetails,
+    required this.totalNodes,
+  });
+
+  final int depth;
+  final bool hasChildren;
+  final List<Map<String, dynamic>> outgoingDetails;
+  final int totalNodes;
 }

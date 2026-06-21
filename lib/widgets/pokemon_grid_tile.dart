@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
+import 'pokemon_rarity_badge.dart';
 import 'pokemon_type_colors.dart';
 
 class PokemonGridTile extends StatelessWidget {
@@ -63,6 +64,11 @@ class PokemonGridTile extends StatelessWidget {
                               ),
                             ),
                           ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: PokemonRarityBadge(pokemon: pokemon),
                         ),
                         Positioned(
                           top: 4,

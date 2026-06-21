@@ -13,16 +13,19 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Carga inicial optimizada con datos livianos y cache en memoria.
 - Busqueda por nombre.
 - Filtros por tipo y generacion.
+- Filtros avanzados por favoritos, stats, movimiento, rareza, composicion de tipos y evolucion.
 - Orden por numero y nombre.
 - Vista de lista y vista de cuadricula.
 - Colores por tipo en chips, bordes y tarjetas.
-- Borde visible por tipo en tarjetas de lista y cuadricula.
+- Borde visible por tipo real en tarjetas de lista y cuadricula.
+- Insignias L/M en tarjetas para Pokemon legendarios y miticos.
 - Menu principal con Pokedex, About us, Help, Settings, Daily Randommon, POKEDLE PRO y Quit.
 - Modo claro y modo oscuro.
 - Persistencia local del modo claro y modo oscuro.
 - Pantalla real de Settings con preferencias y estado de datos locales.
 - Daily Randommon funcional.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
+- Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
 - Movimientos agrupados por metodo de aprendizaje.
 - Detalle competitivo de movimientos con tipo, clase, poder, PP y precision.
@@ -52,7 +55,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Configuracion de proyecto Supabase en dashboard.
 - Perfil de usuario.
 - POKEDLE PRO como proyecto derivado cuando la app base este mas solida.
-- Mas pruebas sobre filtros combinados, detalle de movimientos y estados de error.
+- Mas pruebas sobre rangos de stats, estados de error y flujos autenticados.
 
 ## Comandos utiles
 

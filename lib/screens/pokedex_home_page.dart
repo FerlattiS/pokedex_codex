@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
@@ -40,6 +42,15 @@ const _generationFilters = <GenerationFilter>[
   GenerationFilter(label: 'Gen 9', minId: 906, maxId: 1025),
 ];
 
+const _statFilters = <_StatFilter>[
+  _StatFilter(name: 'hp', label: 'HP'),
+  _StatFilter(name: 'attack', label: 'Ataque'),
+  _StatFilter(name: 'defense', label: 'Defensa'),
+  _StatFilter(name: 'specialAttack', label: 'Ataque esp.'),
+  _StatFilter(name: 'specialDefense', label: 'Defensa esp.'),
+  _StatFilter(name: 'speed', label: 'Velocidad'),
+];
+
 class PokedexHomePage extends StatefulWidget {
   const PokedexHomePage({
     super.key,
@@ -57,14 +68,28 @@ class PokedexHomePage extends StatefulWidget {
 class _PokedexHomePageState extends State<PokedexHomePage> {
   final Set<String> _selectedTypes = {};
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _moveSearchController = TextEditingController();
   List<PokemonPreview> _pokemon = [];
   Set<int> _favoritePokemonIds = {};
+  final Map<int, PokemonPreview> _metadataById = {};
+  final Map<int, PokemonPreview> _detailById = {};
+  final Map<String, RangeValues> _statRanges = {
+    for (final stat in _statFilters) stat.name: const RangeValues(0, 255),
+  };
   String _searchText = '';
+  String _moveSearchText = '';
   GenerationFilter? _selectedGeneration;
+  PokedexTypeCompositionFilter _typeCompositionFilter =
+      PokedexTypeCompositionFilter.any;
+  PokedexRarityFilter _rarityFilter = PokedexRarityFilter.any;
+  PokemonEvolutionStage? _selectedEvolutionStage;
   String? _errorMessage;
   PokedexViewMode _viewMode = PokedexViewMode.list;
   PokedexSortMode _sortMode = PokedexSortMode.numberAsc;
   var _isLoading = true;
+  var _isLoadingAdvancedData = false;
+  var _isLoadingMetadataForBadges = false;
+  var _metadataRequestToken = 0;
 
   @override
   void initState() {
@@ -76,6 +101,7 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _moveSearchController.dispose();
     super.dispose();
   }
 
@@ -100,6 +126,8 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
         _pokemon = pokemon;
         _isLoading = false;
       });
+      unawaited(_loadMetadataForCurrentPokemon(showLoading: false));
+      unawaited(_ensureAdvancedDataForActiveFilters());
     } catch (_) {
       if (!mounted) {
         return;
@@ -153,7 +181,9 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredPokemon = _pokemon.where((pokemon) {
+    final filteredPokemon = _pokemon.map(_pokemonWithLoadedData).where((
+      pokemon,
+    ) {
       final query = _searchText.toLowerCase();
       final name = pokemon.name.toLowerCase();
       final number = pokemon.id.toString().padLeft(3, '0');
@@ -164,7 +194,8 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
               pokemon.id <= selectedGeneration.maxId);
 
       return matchesGeneration &&
-          (name.contains(query) || number.contains(query));
+          (name.contains(query) || number.contains(query)) &&
+          _matchesAdvancedFilters(pokemon);
     }).toList()..sort(_sortPokemon);
 
     return Padding(
@@ -174,6 +205,15 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
           _SearchAndFilterMenu(
             selectedTypes: _selectedTypes,
             selectedGeneration: _selectedGeneration,
+            favoritesOnly: _favoritesOnly,
+            typeCompositionFilter: _typeCompositionFilter,
+            rarityFilter: _rarityFilter,
+            selectedEvolutionStage: _selectedEvolutionStage,
+            evolvesByItemOnly: _evolvesByItemOnly,
+            moveSearchController: _moveSearchController,
+            statRanges: _statRanges,
+            isLoadingAdvancedData:
+                _isLoadingAdvancedData || _isLoadingMetadataForBadges,
             sortMode: _sortMode,
             searchController: _searchController,
             onSearchChanged: (value) {
@@ -186,6 +226,46 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
               setState(() {
                 _selectedGeneration = value;
               });
+            },
+            onFavoritesOnlyChanged: (value) {
+              setState(() {
+                _favoritesOnly = value;
+              });
+            },
+            onTypeCompositionChanged: (value) {
+              setState(() {
+                _typeCompositionFilter = value;
+              });
+            },
+            onRarityChanged: (value) {
+              setState(() {
+                _rarityFilter = value;
+              });
+              unawaited(_ensureAdvancedDataForActiveFilters());
+            },
+            onEvolutionStageChanged: (value) {
+              setState(() {
+                _selectedEvolutionStage = value;
+              });
+              unawaited(_ensureAdvancedDataForActiveFilters());
+            },
+            onEvolvesByItemChanged: (value) {
+              setState(() {
+                _evolvesByItemOnly = value;
+              });
+              unawaited(_ensureAdvancedDataForActiveFilters());
+            },
+            onMoveSearchChanged: (value) {
+              setState(() {
+                _moveSearchText = value;
+              });
+              unawaited(_ensureAdvancedDataForActiveFilters());
+            },
+            onStatRangeChanged: (statName, value) {
+              setState(() {
+                _statRanges[statName] = value;
+              });
+              unawaited(_ensureAdvancedDataForActiveFilters());
             },
             onSortChanged: (value) {
               setState(() {
@@ -255,12 +335,263 @@ class _PokedexHomePageState extends State<PokedexHomePage> {
     };
   }
 
+  bool _favoritesOnly = false;
+  bool _evolvesByItemOnly = false;
+
+  bool _matchesAdvancedFilters(PokemonPreview pokemon) {
+    if (_favoritesOnly && !_favoritePokemonIds.contains(pokemon.id)) {
+      return false;
+    }
+
+    if (!_typeCompositionFilter.matches(pokemon)) {
+      return false;
+    }
+
+    if (!_rarityFilter.matches(pokemon)) {
+      return false;
+    }
+
+    final selectedEvolutionStage = _selectedEvolutionStage;
+    if (selectedEvolutionStage != null &&
+        pokemon.evolutionStage != selectedEvolutionStage) {
+      return false;
+    }
+
+    if (_evolvesByItemOnly && !pokemon.evolvesByItem) {
+      return false;
+    }
+
+    if (!_matchesMoveFilter(pokemon)) {
+      return false;
+    }
+
+    if (!_matchesStatFilters(pokemon)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool _matchesMoveFilter(PokemonPreview pokemon) {
+    final query = _normalizeSearch(_moveSearchText);
+    if (query.isEmpty) {
+      return true;
+    }
+
+    return pokemon.moves.any((move) {
+      return _normalizeSearch(move.name).contains(query) ||
+          _normalizeSearch(move.apiName).contains(query);
+    });
+  }
+
+  bool _matchesStatFilters(PokemonPreview pokemon) {
+    for (final filter in _statFilters) {
+      final range = _statRanges[filter.name] ?? const RangeValues(0, 255);
+      if (range.start <= 0 && range.end >= 255) {
+        continue;
+      }
+
+      int? statValue;
+      for (final stat in pokemon.stats) {
+        if (stat.name == filter.label) {
+          statValue = stat.value;
+          break;
+        }
+      }
+      if (statValue == null ||
+          statValue < range.start.round() ||
+          statValue > range.end.round()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String _normalizeSearch(String value) {
+    return value.toLowerCase().trim().replaceAll(' ', '-');
+  }
+
+  PokemonPreview _pokemonWithLoadedData(PokemonPreview pokemon) {
+    final detail = _detailById[pokemon.id];
+    if (detail != null) {
+      return _mergePokemonData(pokemon, detail);
+    }
+
+    final metadata = _metadataById[pokemon.id];
+    if (metadata != null) {
+      return _mergePokemonData(pokemon, metadata);
+    }
+
+    return pokemon;
+  }
+
+  PokemonPreview _mergePokemonData(PokemonPreview base, PokemonPreview extra) {
+    return base.copyWith(
+      name: extra.name,
+      types: extra.types.isEmpty ? base.types : extra.types,
+      description: extra.description,
+      height: extra.height,
+      weight: extra.weight,
+      imageUrl: extra.imageUrl ?? base.imageUrl,
+      abilities: extra.abilities.isEmpty ? base.abilities : extra.abilities,
+      stats: extra.stats.isEmpty ? base.stats : extra.stats,
+      moves: extra.moves.isEmpty ? base.moves : extra.moves,
+      isLegendary: extra.isLegendary,
+      isMythical: extra.isMythical,
+      evolvesByItem: extra.evolvesByItem,
+      evolutionStage: extra.evolutionStage,
+      evolutionLine: extra.evolutionLine,
+    );
+  }
+
+  bool get _hasMetadataFilters {
+    return _rarityFilter != PokedexRarityFilter.any ||
+        _selectedEvolutionStage != null ||
+        _evolvesByItemOnly;
+  }
+
+  bool get _hasDetailFilters {
+    return _moveSearchText.trim().isNotEmpty ||
+        _statRanges.values.any((range) {
+          return range.start > 0 || range.end < 255;
+        });
+  }
+
+  Future<void> _ensureAdvancedDataForActiveFilters() async {
+    if (_hasDetailFilters) {
+      await _loadDetailsForCurrentPokemon();
+      return;
+    }
+
+    if (_hasMetadataFilters) {
+      await _loadMetadataForCurrentPokemon(showLoading: true);
+    }
+  }
+
+  Future<void> _loadMetadataForCurrentPokemon({
+    required bool showLoading,
+  }) async {
+    if (_pokemon.isEmpty) {
+      return;
+    }
+
+    final token = ++_metadataRequestToken;
+    final missingPokemon = [
+      for (final pokemon in _pokemon)
+        if (!_metadataById.containsKey(pokemon.id) &&
+            !_detailById.containsKey(pokemon.id))
+          pokemon,
+    ];
+
+    if (missingPokemon.isEmpty) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        if (showLoading) {
+          _isLoadingAdvancedData = true;
+        } else {
+          _isLoadingMetadataForBadges = true;
+        }
+      });
+    }
+
+    final loaded = <int, PokemonPreview>{};
+    try {
+      for (var index = 0; index < missingPokemon.length; index += 20) {
+        final batch = missingPokemon.skip(index).take(20).toList();
+        final metadata = await Future.wait(
+          batch.map((pokemon) {
+            return widget.pokemonRepository.fetchPokemonMetadata(pokemon.id);
+          }),
+        );
+
+        for (final item in metadata) {
+          loaded[item.id] = item;
+        }
+      }
+    } catch (_) {
+      // Advanced metadata is optional; the catalog remains usable if it fails.
+    }
+
+    if (!mounted || token != _metadataRequestToken) {
+      return;
+    }
+
+    setState(() {
+      _metadataById.addAll(loaded);
+      if (showLoading) {
+        _isLoadingAdvancedData = false;
+      } else {
+        _isLoadingMetadataForBadges = false;
+      }
+    });
+  }
+
+  Future<void> _loadDetailsForCurrentPokemon() async {
+    if (_pokemon.isEmpty || _isLoadingAdvancedData) {
+      return;
+    }
+
+    final missingPokemon = [
+      for (final pokemon in _pokemon)
+        if (!_detailById.containsKey(pokemon.id)) pokemon,
+    ];
+
+    if (missingPokemon.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingAdvancedData = true;
+    });
+
+    final loaded = <int, PokemonPreview>{};
+    try {
+      for (var index = 0; index < missingPokemon.length; index += 12) {
+        final batch = missingPokemon.skip(index).take(12).toList();
+        final details = await Future.wait(
+          batch.map((pokemon) {
+            return widget.pokemonRepository.fetchPokemonDetail(pokemon.id);
+          }),
+        );
+
+        for (final item in details) {
+          loaded[item.id] = item;
+        }
+      }
+    } catch (_) {
+      // The visible catalog stays available if an advanced filter fetch fails.
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _detailById.addAll(loaded);
+      _isLoadingAdvancedData = false;
+    });
+  }
+
   void _clearFilters() {
     final hadTypeFilters = _selectedTypes.isNotEmpty;
 
     setState(() {
       _selectedTypes.clear();
       _selectedGeneration = null;
+      _favoritesOnly = false;
+      _typeCompositionFilter = PokedexTypeCompositionFilter.any;
+      _rarityFilter = PokedexRarityFilter.any;
+      _selectedEvolutionStage = null;
+      _evolvesByItemOnly = false;
+      _moveSearchText = '';
+      _moveSearchController.clear();
+      for (final stat in _statFilters) {
+        _statRanges[stat.name] = const RangeValues(0, 255);
+      }
       _searchText = '';
       _sortMode = PokedexSortMode.numberAsc;
       _searchController.clear();
@@ -307,28 +638,112 @@ enum PokedexSortMode {
   }
 }
 
+enum PokedexTypeCompositionFilter {
+  any,
+  monotype,
+  dualType;
+
+  String get label {
+    return switch (this) {
+      PokedexTypeCompositionFilter.any => 'Todos',
+      PokedexTypeCompositionFilter.monotype => 'Monotipo',
+      PokedexTypeCompositionFilter.dualType => 'Doble tipo',
+    };
+  }
+
+  bool matches(PokemonPreview pokemon) {
+    return switch (this) {
+      PokedexTypeCompositionFilter.any => true,
+      PokedexTypeCompositionFilter.monotype => pokemon.types.length == 1,
+      PokedexTypeCompositionFilter.dualType => pokemon.types.length >= 2,
+    };
+  }
+}
+
+enum PokedexRarityFilter {
+  any,
+  normal,
+  legendary,
+  mythical;
+
+  String get label {
+    return switch (this) {
+      PokedexRarityFilter.any => 'Todos',
+      PokedexRarityFilter.normal => 'No legendario/mitico',
+      PokedexRarityFilter.legendary => 'Legendario',
+      PokedexRarityFilter.mythical => 'Mitico',
+    };
+  }
+
+  bool matches(PokemonPreview pokemon) {
+    return switch (this) {
+      PokedexRarityFilter.any => true,
+      PokedexRarityFilter.normal => !pokemon.isLegendary && !pokemon.isMythical,
+      PokedexRarityFilter.legendary => pokemon.isLegendary,
+      PokedexRarityFilter.mythical => pokemon.isMythical,
+    };
+  }
+}
+
 enum PokedexViewMode { list, grid }
+
+class _StatFilter {
+  const _StatFilter({required this.name, required this.label});
+
+  final String name;
+  final String label;
+}
 
 class _SearchAndFilterMenu extends StatelessWidget {
   const _SearchAndFilterMenu({
     required this.selectedTypes,
     required this.selectedGeneration,
+    required this.favoritesOnly,
+    required this.typeCompositionFilter,
+    required this.rarityFilter,
+    required this.selectedEvolutionStage,
+    required this.evolvesByItemOnly,
+    required this.moveSearchController,
+    required this.statRanges,
+    required this.isLoadingAdvancedData,
     required this.sortMode,
     required this.searchController,
     required this.onSearchChanged,
     required this.onTypeToggled,
     required this.onGenerationChanged,
+    required this.onFavoritesOnlyChanged,
+    required this.onTypeCompositionChanged,
+    required this.onRarityChanged,
+    required this.onEvolutionStageChanged,
+    required this.onEvolvesByItemChanged,
+    required this.onMoveSearchChanged,
+    required this.onStatRangeChanged,
     required this.onSortChanged,
     required this.onClearFilters,
   });
 
   final Set<String> selectedTypes;
   final GenerationFilter? selectedGeneration;
+  final bool favoritesOnly;
+  final PokedexTypeCompositionFilter typeCompositionFilter;
+  final PokedexRarityFilter rarityFilter;
+  final PokemonEvolutionStage? selectedEvolutionStage;
+  final bool evolvesByItemOnly;
+  final TextEditingController moveSearchController;
+  final Map<String, RangeValues> statRanges;
+  final bool isLoadingAdvancedData;
   final PokedexSortMode sortMode;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onTypeToggled;
   final ValueChanged<GenerationFilter?> onGenerationChanged;
+  final ValueChanged<bool> onFavoritesOnlyChanged;
+  final ValueChanged<PokedexTypeCompositionFilter> onTypeCompositionChanged;
+  final ValueChanged<PokedexRarityFilter> onRarityChanged;
+  final ValueChanged<PokemonEvolutionStage?> onEvolutionStageChanged;
+  final ValueChanged<bool> onEvolvesByItemChanged;
+  final ValueChanged<String> onMoveSearchChanged;
+  final void Function(String statName, RangeValues range) onStatRangeChanged;
   final ValueChanged<PokedexSortMode> onSortChanged;
   final VoidCallback onClearFilters;
 
@@ -340,7 +755,7 @@ class _SearchAndFilterMenu extends StatelessWidget {
       childrenPadding: const EdgeInsets.only(bottom: 8),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 300),
+          constraints: const BoxConstraints(maxHeight: 320),
           child: SingleChildScrollView(
             key: const ValueKey('filterScrollView'),
             child: Column(
@@ -397,6 +812,13 @@ class _SearchAndFilterMenu extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Solo favoritos'),
+                  value: favoritesOnly,
+                  onChanged: onFavoritesOnlyChanged,
+                ),
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Wrap(
@@ -413,6 +835,111 @@ class _SearchAndFilterMenu extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                DropdownButtonFormField<PokedexTypeCompositionFilter>(
+                  key: ValueKey(
+                    'typeComposition-${typeCompositionFilter.name}',
+                  ),
+                  initialValue: typeCompositionFilter,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Composicion de tipos',
+                  ),
+                  items: [
+                    for (final filter in PokedexTypeCompositionFilter.values)
+                      DropdownMenuItem(
+                        value: filter,
+                        child: Text(filter.label),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onTypeCompositionChanged(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PokedexRarityFilter>(
+                  key: ValueKey('rarityFilter-${rarityFilter.name}'),
+                  initialValue: rarityFilter,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Rareza',
+                  ),
+                  items: [
+                    for (final filter in PokedexRarityFilter.values)
+                      DropdownMenuItem(
+                        value: filter,
+                        child: Text(filter.label),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      onRarityChanged(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PokemonEvolutionStage?>(
+                  key: ValueKey(
+                    'evolutionStage-${selectedEvolutionStage?.name ?? 'all'}',
+                  ),
+                  initialValue: selectedEvolutionStage,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Etapa evolutiva',
+                  ),
+                  items: [
+                    const DropdownMenuItem<PokemonEvolutionStage?>(
+                      value: null,
+                      child: Text('Todas'),
+                    ),
+                    for (final stage in PokemonEvolutionStage.values)
+                      if (stage != PokemonEvolutionStage.unknown)
+                        DropdownMenuItem<PokemonEvolutionStage?>(
+                          value: stage,
+                          child: Text(stage.label),
+                        ),
+                  ],
+                  onChanged: onEvolutionStageChanged,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Evoluciona con objeto'),
+                  value: evolvesByItemOnly,
+                  onChanged: onEvolvesByItemChanged,
+                ),
+                TextField(
+                  key: const ValueKey('moveSearchField'),
+                  controller: moveSearchController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Movimiento que puede aprender',
+                    prefixIcon: Icon(Icons.auto_fix_high),
+                  ),
+                  onChanged: onMoveSearchChanged,
+                ),
+                const SizedBox(height: 12),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Rangos de stats'),
+                  subtitle: const Text('HP, ataques, defensas y velocidad'),
+                  children: [
+                    for (final stat in _statFilters)
+                      _StatRangeSlider(
+                        stat: stat,
+                        range:
+                            statRanges[stat.name] ?? const RangeValues(0, 255),
+                        onChanged: (range) {
+                          onStatRangeChanged(stat.name, range);
+                        },
+                      ),
+                  ],
+                ),
+                if (isLoadingAdvancedData) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(),
+                ],
+                const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
@@ -425,6 +952,39 @@ class _SearchAndFilterMenu extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatRangeSlider extends StatelessWidget {
+  const _StatRangeSlider({
+    required this.stat,
+    required this.range,
+    required this.onChanged,
+  });
+
+  final _StatFilter stat;
+  final RangeValues range;
+  final ValueChanged<RangeValues> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = range.start.round();
+    final end = range.end.round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${stat.label}: $start-$end'),
+        RangeSlider(
+          values: range,
+          min: 0,
+          max: 255,
+          divisions: 51,
+          labels: RangeLabels('$start', '$end'),
+          onChanged: onChanged,
         ),
       ],
     );

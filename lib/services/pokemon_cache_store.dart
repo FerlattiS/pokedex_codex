@@ -30,8 +30,8 @@ class SharedPreferencesPokemonCacheStore implements PokemonCacheStore {
 
   final SharedPreferences _preferences;
 
-  static const _catalogKey = 'pokemon.cache.catalog';
-  static const _catalogLimitKey = 'pokemon.cache.catalog.limit';
+  static const _catalogKey = 'pokemon.cache.catalog.v2';
+  static const _catalogLimitKey = 'pokemon.cache.catalog.v2.limit';
   static const _detailPrefix = 'pokemon.cache.detail.';
   static const _abilityPrefix = 'pokemon.cache.ability.';
   static const _movePrefix = 'pokemon.cache.move.';

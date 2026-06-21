@@ -38,7 +38,10 @@ void main() {
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'pika');
+    await tester.enterText(
+      find.byKey(const ValueKey('pokemonSearchField')),
+      'pika',
+    );
     await tester.pump();
 
     expect(find.text('Pikachu'), findsOneWidget);
@@ -73,6 +76,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(_filterChip('Agua'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      _filterChip('Tierra'),
+      120,
+      scrollable: _filterScrollView(),
+    );
     await tester.tap(_filterChip('Tierra'));
     await tester.pumpAndSettle();
 
@@ -89,7 +97,10 @@ void main() {
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'mewtwo');
+    await tester.enterText(
+      find.byKey(const ValueKey('pokemonSearchField')),
+      'mewtwo',
+    );
     await tester.pump();
 
     expect(find.text('No hay Pokemon para mostrar'), findsOneWidget);
@@ -108,6 +119,75 @@ void main() {
 
     expect(find.text('1 Pokemon encontrados'), findsOneWidget);
     expect(find.text('Chikorita'), findsOneWidget);
+    expect(find.text('Bulbasaur'), findsNothing);
+  });
+
+  testWidgets('Filters Pokemon by favorites only', (WidgetTester tester) async {
+    final userDataRepository = MemoryUserDataRepository();
+    await userDataRepository.writeFavoritePokemonIds({25});
+
+    await tester.pumpWidget(
+      MyApp(
+        pokemonRepository: pokemonRepository,
+        userDataRepository: userDataRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Busqueda y filtros'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Solo favoritos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 Pokemon encontrados'), findsOneWidget);
+    expect(find.text('Pikachu'), findsOneWidget);
+    expect(find.text('Bulbasaur'), findsNothing);
+  });
+
+  testWidgets('Filters Pokemon by rarity metadata', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Busqueda y filtros'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('rarityFilter-any')),
+      120,
+      scrollable: _filterScrollView(),
+    );
+    await tester.tap(find.byKey(const ValueKey('rarityFilter-any')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Legendario').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 Pokemon encontrados'), findsOneWidget);
+    expect(find.text('Pikachu'), findsOneWidget);
+    expect(find.text('Chikorita'), findsNothing);
+  });
+
+  testWidgets('Filters Pokemon by move learned by any method', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Busqueda y filtros'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('moveSearchField')),
+      120,
+      scrollable: _filterScrollView(),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('moveSearchField')),
+      'thunder',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 Pokemon encontrados'), findsOneWidget);
+    expect(find.text('Pikachu'), findsOneWidget);
     expect(find.text('Bulbasaur'), findsNothing);
   });
 
@@ -367,6 +447,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Altura'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Habilidades'), 120);
     expect(find.text('Habilidades'), findsOneWidget);
   });
 
@@ -402,8 +483,13 @@ void main() {
     );
     expect(find.text('Altura'), findsOneWidget);
     expect(find.text('Peso'), findsOneWidget);
+    expect(find.text('Linea evolutiva'), findsOneWidget);
+    expect(find.text('Ivysaur'), findsOneWidget);
+    expect(find.text('Nivel 16'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Habilidades'), 120);
     expect(find.text('Habilidades'), findsOneWidget);
     expect(find.text('Espesura'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Stats'), 120);
     expect(find.text('Stats'), findsOneWidget);
     expect(find.text('HP'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Movimientos'), 160);
@@ -422,6 +508,7 @@ void main() {
 
     await tester.tap(find.text('Bulbasaur'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Espesura'), 120);
     await tester.tap(find.text('Espesura'));
     await tester.pumpAndSettle();
 
@@ -467,6 +554,15 @@ Finder _filterChip(String label) {
   return find.ancestor(of: find.text(label), matching: find.byType(FilterChip));
 }
 
+Finder _filterScrollView() {
+  return find
+      .descendant(
+        of: find.byKey(const ValueKey('filterScrollView')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+}
+
 class _FakePokemonRepository implements PokemonRepository {
   @override
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302}) async {
@@ -501,27 +597,144 @@ class _FakePokemonRepository implements PokemonRepository {
 
   @override
   Future<PokemonPreview> fetchPokemonDetail(int id) async {
-    return const PokemonPreview(
-      id: 1,
-      name: 'Bulbasaur',
-      types: ['Planta', 'Veneno'],
-      description: 'Una semilla crece en su lomo desde que nace.',
-      height: '0.7 m',
-      weight: '6.9 kg',
-      abilities: [PokemonAbility(name: 'Espesura', apiName: 'overgrow')],
-      stats: [
-        PokemonStat(name: 'HP', value: 45),
-        PokemonStat(name: 'Ataque', value: 49),
-      ],
-      moves: [
-        PokemonMoveSummary(
-          name: 'Placaje',
-          apiName: 'tackle',
-          learnMethod: 'Nivel',
-          level: 1,
-        ),
-      ],
-    );
+    return _detailPokemon(id);
+  }
+
+  @override
+  Future<PokemonPreview> fetchPokemonMetadata(int id) async {
+    return switch (id) {
+      25 => const PokemonPreview(
+        id: 25,
+        name: 'Pikachu',
+        isLegendary: true,
+        evolvesByItem: true,
+        evolutionStage: PokemonEvolutionStage.middle,
+      ),
+      152 => const PokemonPreview(
+        id: 152,
+        name: 'Chikorita',
+        isMythical: true,
+        evolutionStage: PokemonEvolutionStage.base,
+      ),
+      _ => PokemonPreview(
+        id: id,
+        name: _pokemonName(id),
+        evolutionStage: PokemonEvolutionStage.base,
+      ),
+    };
+  }
+
+  String _pokemonName(int id) {
+    return switch (id) {
+      1 => 'Bulbasaur',
+      4 => 'Charmander',
+      7 => 'Squirtle',
+      194 => 'Wooper',
+      _ => 'Pokemon $id',
+    };
+  }
+
+  PokemonPreview _detailPokemon(int id) {
+    return switch (id) {
+      4 => const PokemonPreview(
+        id: 4,
+        name: 'Charmander',
+        types: ['Fuego'],
+        description: 'Prefiere las cosas calientes.',
+        height: '0.6 m',
+        weight: '8.5 kg',
+        abilities: [PokemonAbility(name: 'Mar llamas', apiName: 'blaze')],
+        stats: [
+          PokemonStat(name: 'HP', value: 39),
+          PokemonStat(name: 'Ataque', value: 52),
+          PokemonStat(name: 'Defensa', value: 43),
+          PokemonStat(name: 'Ataque esp.', value: 60),
+          PokemonStat(name: 'Defensa esp.', value: 50),
+          PokemonStat(name: 'Velocidad', value: 65),
+        ],
+        moves: [
+          PokemonMoveSummary(
+            name: 'Aranazo',
+            apiName: 'scratch',
+            learnMethod: 'Nivel',
+            level: 1,
+          ),
+        ],
+        evolutionStage: PokemonEvolutionStage.base,
+        evolutionLine: [
+          PokemonEvolutionStep(id: 4, name: 'Charmander', method: 'Base'),
+          PokemonEvolutionStep(id: 5, name: 'Charmeleon', method: 'Nivel 16'),
+          PokemonEvolutionStep(id: 6, name: 'Charizard', method: 'Nivel 36'),
+        ],
+      ),
+      25 => const PokemonPreview(
+        id: 25,
+        name: 'Pikachu',
+        types: ['Electrico'],
+        description: 'Puede soltar descargas electricas.',
+        height: '0.4 m',
+        weight: '6.0 kg',
+        isLegendary: true,
+        evolvesByItem: true,
+        evolutionStage: PokemonEvolutionStage.middle,
+        stats: [
+          PokemonStat(name: 'HP', value: 35),
+          PokemonStat(name: 'Ataque', value: 55),
+          PokemonStat(name: 'Defensa', value: 40),
+          PokemonStat(name: 'Ataque esp.', value: 50),
+          PokemonStat(name: 'Defensa esp.', value: 50),
+          PokemonStat(name: 'Velocidad', value: 90),
+        ],
+        moves: [
+          PokemonMoveSummary(
+            name: 'Impactrueno',
+            apiName: 'thunder-shock',
+            learnMethod: 'Nivel',
+            level: 1,
+          ),
+        ],
+        evolutionLine: [
+          PokemonEvolutionStep(id: 172, name: 'Pichu', method: 'Base'),
+          PokemonEvolutionStep(id: 25, name: 'Pikachu', method: 'Amistad alta'),
+          PokemonEvolutionStep(
+            id: 26,
+            name: 'Raichu',
+            method: 'Usar Thunder stone',
+          ),
+        ],
+      ),
+      _ => const PokemonPreview(
+        id: 1,
+        name: 'Bulbasaur',
+        types: ['Planta', 'Veneno'],
+        description: 'Una semilla crece en su lomo desde que nace.',
+        height: '0.7 m',
+        weight: '6.9 kg',
+        abilities: [PokemonAbility(name: 'Espesura', apiName: 'overgrow')],
+        stats: [
+          PokemonStat(name: 'HP', value: 45),
+          PokemonStat(name: 'Ataque', value: 49),
+          PokemonStat(name: 'Defensa', value: 49),
+          PokemonStat(name: 'Ataque esp.', value: 65),
+          PokemonStat(name: 'Defensa esp.', value: 65),
+          PokemonStat(name: 'Velocidad', value: 45),
+        ],
+        moves: [
+          PokemonMoveSummary(
+            name: 'Placaje',
+            apiName: 'tackle',
+            learnMethod: 'Nivel',
+            level: 1,
+          ),
+        ],
+        evolutionStage: PokemonEvolutionStage.base,
+        evolutionLine: [
+          PokemonEvolutionStep(id: 1, name: 'Bulbasaur', method: 'Base'),
+          PokemonEvolutionStep(id: 2, name: 'Ivysaur', method: 'Nivel 16'),
+          PokemonEvolutionStep(id: 3, name: 'Venusaur', method: 'Nivel 32'),
+        ],
+      ),
+    };
   }
 
   @override
@@ -567,6 +780,11 @@ class _FailingPokemonRepository implements PokemonRepository {
 
   @override
   Future<PokemonPreview> fetchPokemonDetail(int id) async {
+    throw Exception('Test error');
+  }
+
+  @override
+  Future<PokemonPreview> fetchPokemonMetadata(int id) async {
     throw Exception('Test error');
   }
 

@@ -10,6 +10,11 @@ class PokemonPreview {
     this.abilities = const [],
     this.stats = const [],
     this.moves = const [],
+    this.isLegendary = false,
+    this.isMythical = false,
+    this.evolvesByItem = false,
+    this.evolutionStage = PokemonEvolutionStage.unknown,
+    this.evolutionLine = const [],
   });
 
   final int id;
@@ -22,6 +27,47 @@ class PokemonPreview {
   final List<PokemonAbility> abilities;
   final List<PokemonStat> stats;
   final List<PokemonMoveSummary> moves;
+  final bool isLegendary;
+  final bool isMythical;
+  final bool evolvesByItem;
+  final PokemonEvolutionStage evolutionStage;
+  final List<PokemonEvolutionStep> evolutionLine;
+
+  PokemonPreview copyWith({
+    int? id,
+    String? name,
+    List<String>? types,
+    String? description,
+    String? height,
+    String? weight,
+    String? imageUrl,
+    List<PokemonAbility>? abilities,
+    List<PokemonStat>? stats,
+    List<PokemonMoveSummary>? moves,
+    bool? isLegendary,
+    bool? isMythical,
+    bool? evolvesByItem,
+    PokemonEvolutionStage? evolutionStage,
+    List<PokemonEvolutionStep>? evolutionLine,
+  }) {
+    return PokemonPreview(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      types: types ?? this.types,
+      description: description ?? this.description,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
+      imageUrl: imageUrl ?? this.imageUrl,
+      abilities: abilities ?? this.abilities,
+      stats: stats ?? this.stats,
+      moves: moves ?? this.moves,
+      isLegendary: isLegendary ?? this.isLegendary,
+      isMythical: isMythical ?? this.isMythical,
+      evolvesByItem: evolvesByItem ?? this.evolvesByItem,
+      evolutionStage: evolutionStage ?? this.evolutionStage,
+      evolutionLine: evolutionLine ?? this.evolutionLine,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -35,6 +81,11 @@ class PokemonPreview {
       'abilities': abilities.map((ability) => ability.toJson()).toList(),
       'stats': stats.map((stat) => stat.toJson()).toList(),
       'moves': moves.map((move) => move.toJson()).toList(),
+      'isLegendary': isLegendary,
+      'isMythical': isMythical,
+      'evolvesByItem': evolvesByItem,
+      'evolutionStage': evolutionStage.name,
+      'evolutionLine': evolutionLine.map((step) => step.toJson()).toList(),
     };
   }
 
@@ -61,6 +112,68 @@ class PokemonPreview {
           .cast<Map<String, dynamic>>()
           .map(PokemonMoveSummary.fromJson)
           .toList(),
+      isLegendary: json['isLegendary'] as bool? ?? false,
+      isMythical: json['isMythical'] as bool? ?? false,
+      evolvesByItem: json['evolvesByItem'] as bool? ?? false,
+      evolutionStage: PokemonEvolutionStage.fromName(
+        json['evolutionStage'] as String?,
+      ),
+      evolutionLine: (json['evolutionLine'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(PokemonEvolutionStep.fromJson)
+          .toList(),
+    );
+  }
+}
+
+enum PokemonEvolutionStage {
+  unknown,
+  standalone,
+  base,
+  middle,
+  finalStage;
+
+  String get label {
+    return switch (this) {
+      PokemonEvolutionStage.unknown => 'Sin datos',
+      PokemonEvolutionStage.standalone => 'Sin evolucion',
+      PokemonEvolutionStage.base => 'Base',
+      PokemonEvolutionStage.middle => 'Intermedia',
+      PokemonEvolutionStage.finalStage => 'Final',
+    };
+  }
+
+  static PokemonEvolutionStage fromName(String? name) {
+    for (final stage in PokemonEvolutionStage.values) {
+      if (stage.name == name) {
+        return stage;
+      }
+    }
+
+    return PokemonEvolutionStage.unknown;
+  }
+}
+
+class PokemonEvolutionStep {
+  const PokemonEvolutionStep({
+    required this.id,
+    required this.name,
+    required this.method,
+  });
+
+  final int id;
+  final String name;
+  final String method;
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name, 'method': method};
+  }
+
+  factory PokemonEvolutionStep.fromJson(Map<String, dynamic> json) {
+    return PokemonEvolutionStep(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      method: json['method'] as String,
     );
   }
 }

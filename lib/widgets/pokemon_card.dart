@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
+import 'pokemon_rarity_badge.dart';
 import 'pokemon_type_colors.dart';
 import 'pokemon_type_chips.dart';
 
@@ -47,11 +48,19 @@ class PokemonCard extends StatelessWidget {
                   emptyText: 'Tipos disponibles con filtros',
                 ),
               ),
-              trailing: IconButton(
-                tooltip: isFavorite ? 'Quitar favorito' : 'Agregar favorito',
-                icon: Icon(isFavorite ? Icons.star : Icons.star_border),
-                color: isFavorite ? Colors.amber : null,
-                onPressed: onFavoritePressed,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PokemonRarityBadge(pokemon: pokemon),
+                  IconButton(
+                    tooltip: isFavorite
+                        ? 'Quitar favorito'
+                        : 'Agregar favorito',
+                    icon: Icon(isFavorite ? Icons.star : Icons.star_border),
+                    color: isFavorite ? Colors.amber : null,
+                    onPressed: onFavoritePressed,
+                  ),
+                ],
               ),
             ),
           ),

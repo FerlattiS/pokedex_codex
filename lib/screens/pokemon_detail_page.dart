@@ -146,6 +146,8 @@ class _PokemonDetailContent extends StatelessWidget {
         _PokemonFact(label: 'Altura', value: pokemon.height),
         _PokemonFact(label: 'Peso', value: pokemon.weight),
         const SizedBox(height: 24),
+        _EvolutionSection(evolutionLine: pokemon.evolutionLine),
+        const SizedBox(height: 24),
         _AbilitiesSection(
           abilities: pokemon.abilities,
           pokemonRepository: pokemonRepository,
@@ -158,6 +160,43 @@ class _PokemonDetailContent extends StatelessWidget {
           pokemonRepository: pokemonRepository,
         ),
         ?footer,
+      ],
+    );
+  }
+}
+
+class _EvolutionSection extends StatelessWidget {
+  const _EvolutionSection({required this.evolutionLine});
+
+  final List<PokemonEvolutionStep> evolutionLine;
+
+  @override
+  Widget build(BuildContext context) {
+    if (evolutionLine.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Linea evolutiva', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              for (final step in evolutionLine) ...[
+                ListTile(
+                  leading: CircleAvatar(
+                    child: Text('#${step.id.toString().padLeft(3, '0')}'),
+                  ),
+                  title: Text(step.name),
+                  subtitle: Text(step.method),
+                ),
+                if (step != evolutionLine.last) const Divider(height: 1),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
