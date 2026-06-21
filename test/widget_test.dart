@@ -281,6 +281,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Preferencias'), findsOneWidget);
+    expect(find.text('Supabase'), findsOneWidget);
+    expect(find.text('No configurado'), findsOneWidget);
     expect(find.text('Datos locales'), findsOneWidget);
     expect(find.text('Cache de PokeAPI'), findsOneWidget);
     expect(

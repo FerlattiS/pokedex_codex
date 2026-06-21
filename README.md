@@ -31,6 +31,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Favoritos locales desde tarjetas y detalle de Pokemon.
 - Pantalla dedicada para ver Pokemon favoritos.
 - Pantallas reales de About us y Help.
+- Dependencia e inicializacion opcional de Supabase por variables de entorno.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 
@@ -42,7 +43,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Sincronizacion de equipos con Supabase.
 - Sincronizacion de notas personales con Supabase.
 - Autenticacion con Supabase.
-- Configuracion de proyecto Supabase y variables de entorno.
+- Configuracion de proyecto Supabase en dashboard.
 - Perfil de usuario.
 - POKEDLE PRO como proyecto derivado cuando la app base este mas solida.
 - Mas pruebas sobre filtros combinados, detalle de movimientos y estados de error.
@@ -52,4 +53,10 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 ```bash
 flutter analyze
 flutter test
+```
+
+Para iniciar Supabase en la app, pasa la URL del proyecto y la publishable key:
+
+```bash
+flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
 ```

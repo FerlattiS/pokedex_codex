@@ -28,12 +28,14 @@ class AppShell extends StatefulWidget {
     required this.userDataRepository,
     required this.isDarkMode,
     required this.onDarkModeChanged,
+    required this.isSupabaseConfigured,
   });
 
   final PokemonRepository pokemonRepository;
   final UserDataRepository userDataRepository;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
+  final bool isSupabaseConfigured;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -70,6 +72,7 @@ class _AppShellState extends State<AppShell> {
         MainMenuDestination.settings => SettingsPage(
           isDarkMode: widget.isDarkMode,
           onDarkModeChanged: widget.onDarkModeChanged,
+          isSupabaseConfigured: widget.isSupabaseConfigured,
         ),
         MainMenuDestination.dailyRandommon => DailyRandommonPage(
           pokemonRepository: widget.pokemonRepository,

@@ -5,10 +5,12 @@ class SettingsPage extends StatelessWidget {
     super.key,
     required this.isDarkMode,
     required this.onDarkModeChanged,
+    required this.isSupabaseConfigured,
   });
 
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
+  final bool isSupabaseConfigured;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,24 @@ class SettingsPage extends StatelessWidget {
             subtitle: const Text('Se guarda localmente en este dispositivo.'),
             value: isDarkMode,
             onChanged: onDarkModeChanged,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('Supabase', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: Icon(
+              isSupabaseConfigured
+                  ? Icons.cloud_done_outlined
+                  : Icons.cloud_off_outlined,
+            ),
+            title: Text(
+              isSupabaseConfigured ? 'Configurado' : 'No configurado',
+            ),
+            subtitle: const Text(
+              'Usa SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY con --dart-define.',
+            ),
           ),
         ),
         const SizedBox(height: 24),

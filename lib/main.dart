@@ -7,12 +7,14 @@ import 'screens/app_shell.dart';
 import 'services/app_settings_repository.dart';
 import 'services/pokemon_cache_store.dart';
 import 'services/pokemon_repository.dart';
+import 'services/supabase_service.dart';
 import 'services/user_data_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
+  final supabaseClient = await initializeSupabase();
   final appSettingsRepository = SharedPreferencesAppSettingsRepository(
     preferences,
   );
@@ -26,6 +28,7 @@ Future<void> main() async {
       userDataRepository: LocalUserDataRepository(preferences),
       appSettingsRepository: appSettingsRepository,
       initialThemeMode: themeMode,
+      isSupabaseConfigured: supabaseClient != null,
     ),
   );
 }
@@ -37,12 +40,14 @@ class MyApp extends StatefulWidget {
     this.userDataRepository,
     this.appSettingsRepository,
     this.initialThemeMode = ThemeMode.light,
+    this.isSupabaseConfigured = false,
   });
 
   final PokemonRepository? pokemonRepository;
   final UserDataRepository? userDataRepository;
   final AppSettingsRepository? appSettingsRepository;
   final ThemeMode initialThemeMode;
+  final bool isSupabaseConfigured;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -88,6 +93,7 @@ class _MyAppState extends State<MyApp> {
             widget.userDataRepository ?? MemoryUserDataRepository(),
         isDarkMode: _themeMode == ThemeMode.dark,
         onDarkModeChanged: _setDarkMode,
+        isSupabaseConfigured: widget.isSupabaseConfigured,
       ),
     );
   }
