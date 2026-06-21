@@ -80,6 +80,7 @@ class _AppShellState extends State<AppShell> {
         ),
         MainMenuDestination.profile => ProfilePage(
           userDataRepository: widget.userDataRepository,
+          pokedleProgressRepository: widget.pokedleProgressRepository,
           isSupabaseConfigured: widget.isSupabaseConfigured,
         ),
         MainMenuDestination.aboutUs => const AboutUsPage(),

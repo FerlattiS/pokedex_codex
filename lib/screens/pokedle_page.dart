@@ -27,6 +27,8 @@ class _PokedlePageState extends State<PokedlePage> {
   final TextEditingController _guessController = TextEditingController();
   List<PokemonPreview> _catalog = [];
   List<PokemonPreview> _guesses = [];
+  PokedleSettings _settings = const PokedleSettings.defaults();
+  PokedleDailyResult? _result;
   PokemonPreview? _target;
   PokemonPreview? _selectedPokemon;
   var _isSubmitting = false;
@@ -44,13 +46,19 @@ class _PokedlePageState extends State<PokedlePage> {
   }
 
   Future<void> _loadGame() async {
-    final catalog = await widget.pokemonRepository.fetchPokemonCatalog();
+    final settings = await widget.progressRepository.readSettings();
+    final fullCatalog = await widget.pokemonRepository.fetchPokemonCatalog();
+    final catalog = fullCatalog.where((pokemon) {
+      return _isInScope(pokemon, settings.dexScope);
+    }).toList();
     if (catalog.isEmpty) {
       throw Exception('Catalogo vacio');
     }
 
-    final targetPreview = catalog[_dailyIndex(catalog.length, _date)];
-    final guessIds = await widget.progressRepository.readGuessIds(_dateKey);
+    final sessionKey = _sessionKey(settings);
+    final targetPreview = catalog[_dailyIndex(catalog.length, _date, settings)];
+    final guessIds = await widget.progressRepository.readGuessIds(sessionKey);
+    final result = await widget.progressRepository.readResult(sessionKey);
     final target = await widget.pokemonRepository.fetchPokemonDetail(
       targetPreview.id,
     );
@@ -70,6 +78,8 @@ class _PokedlePageState extends State<PokedlePage> {
 
     setState(() {
       _catalog = catalog;
+      _settings = settings;
+      _result = result;
       _target = target;
       _guesses = guesses;
     });
@@ -77,7 +87,7 @@ class _PokedlePageState extends State<PokedlePage> {
 
   Future<void> _submitGuess() async {
     final selectedPokemon = _selectedPokemon;
-    if (selectedPokemon == null || _isSubmitting) {
+    if (selectedPokemon == null || _isSubmitting || _isGameOver) {
       return;
     }
 
@@ -99,10 +109,31 @@ class _PokedlePageState extends State<PokedlePage> {
       );
       final nextGuesses = [..._guesses, detail];
       final wonWithGuess = detail.id == _target?.id;
+      final lostWithGuess =
+          !wonWithGuess &&
+          _settings.attemptMode.maxAttempts != null &&
+          nextGuesses.length >= _settings.attemptMode.maxAttempts!;
+      final sessionKey = _sessionKey(_settings);
+      final result = wonWithGuess || lostWithGuess
+          ? PokedleDailyResult(
+              sessionKey: sessionKey,
+              dateKey: _dateKey,
+              dexScope: _settings.dexScope,
+              attemptMode: _settings.attemptMode,
+              targetId: _target!.id,
+              won: wonWithGuess,
+              attempts: nextGuesses.length,
+              completedAt: DateTime.now(),
+            )
+          : null;
+
       await widget.progressRepository.writeGuessIds(
-        _dateKey,
+        sessionKey,
         nextGuesses.map((pokemon) => pokemon.id).toList(),
       );
+      if (result != null) {
+        await widget.progressRepository.writeResult(result);
+      }
 
       if (!mounted) {
         return;
@@ -110,13 +141,16 @@ class _PokedlePageState extends State<PokedlePage> {
 
       setState(() {
         _guesses = nextGuesses;
+        _result = result;
         _selectedPokemon = null;
         _guessController.clear();
         _isSubmitting = false;
       });
 
       if (wonWithGuess) {
-        await _showWinDialog(detail);
+        await _showWinDialog(detail, nextGuesses.length);
+      } else if (lostWithGuess) {
+        await _showLoseDialog(_target!);
       }
     } catch (_) {
       if (!mounted) {
@@ -129,14 +163,50 @@ class _PokedlePageState extends State<PokedlePage> {
     }
   }
 
-  Future<void> _showWinDialog(PokemonPreview pokemon) async {
+  Future<void> _changeSettings(PokedleSettings settings) async {
+    await widget.progressRepository.writeSettings(settings);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _settings = settings;
+      _selectedPokemon = null;
+      _guessController.clear();
+      _loadFuture = _loadGame();
+    });
+  }
+
+  Future<void> _showWinDialog(PokemonPreview pokemon, int attempts) async {
     return showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
           icon: const Icon(Icons.emoji_events_outlined),
           title: const Text('Ganaste POKEDLE PRO'),
-          content: Text('Adivinaste el Pokemon diario: ${pokemon.name}.'),
+          content: Text(
+            'Adivinaste el Pokemon diario: ${pokemon.name} en $attempts '
+            'intentos.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showLoseDialog(PokemonPreview pokemon) async {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(Icons.sentiment_dissatisfied_outlined),
+          title: const Text('Sin intentos'),
+          content: Text('Se acabaron los 10 intentos. Era ${pokemon.name}.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -150,8 +220,13 @@ class _PokedlePageState extends State<PokedlePage> {
 
   bool get _hasWon {
     final target = _target;
-    return target != null && _guesses.any((guess) => guess.id == target.id);
+    return _result?.won == true ||
+        (target != null && _guesses.any((guess) => guess.id == target.id));
   }
+
+  bool get _hasLost => _result != null && !_result!.won;
+
+  bool get _isGameOver => _hasWon || _hasLost;
 
   @override
   Widget build(BuildContext context) {
@@ -194,14 +269,26 @@ class _PokedlePageState extends State<PokedlePage> {
             Text(
               _hasWon
                   ? 'Correcto: ${_target!.name}'
+                  : _hasLost
+                  ? 'Sin intentos: era ${_target!.name}'
                   : 'Adivina el Pokemon diario',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
+            _PokedleSettingsPanel(
+              settings: _settings,
+              onChanged: _changeSettings,
+            ),
+            const SizedBox(height: 16),
+            _AttemptSummary(
+              guesses: _guesses.length,
+              attemptMode: _settings.attemptMode,
+            ),
+            const SizedBox(height: 12),
             _GuessInput(
               catalog: _catalog,
               controller: _guessController,
-              enabled: !_hasWon && !_isSubmitting,
+              enabled: !_isGameOver && !_isSubmitting,
               onSelected: (pokemon) {
                 setState(() {
                   _selectedPokemon = pokemon;
@@ -225,9 +312,39 @@ class _PokedlePageState extends State<PokedlePage> {
     );
   }
 
-  int _dailyIndex(int length, DateTime date) {
-    final seed = date.year * 1000 + date.month * 40 + date.day + 73;
+  int _dailyIndex(int length, DateTime date, PokedleSettings settings) {
+    final seed =
+        date.year * 1000 +
+        date.month * 40 +
+        date.day +
+        settings.dexScope.index * 97 +
+        settings.attemptMode.index * 31 +
+        73;
     return seed % length;
+  }
+
+  bool _isInScope(PokemonPreview pokemon, PokedleDexScope scope) {
+    return switch (scope) {
+      PokedleDexScope.classic =>
+        (pokemon.generation ?? _generationFromId(pokemon.id)) <= 2,
+      PokedleDexScope.full => true,
+    };
+  }
+
+  int _generationFromId(int id) {
+    if (id <= 151) return 1;
+    if (id <= 251) return 2;
+    if (id <= 386) return 3;
+    if (id <= 493) return 4;
+    if (id <= 649) return 5;
+    if (id <= 721) return 6;
+    if (id <= 809) return 7;
+    if (id <= 905) return 8;
+    return 9;
+  }
+
+  String _sessionKey(PokedleSettings settings) {
+    return '$_dateKey.${settings.dexScope.name}.${settings.attemptMode.name}';
   }
 
   String _formatDateKey(DateTime date) {
@@ -236,6 +353,94 @@ class _PokedlePageState extends State<PokedlePage> {
       date.month.toString().padLeft(2, '0'),
       date.day.toString().padLeft(2, '0'),
     ].join('-');
+  }
+}
+
+class _PokedleSettingsPanel extends StatelessWidget {
+  const _PokedleSettingsPanel({
+    required this.settings,
+    required this.onChanged,
+  });
+
+  final PokedleSettings settings;
+  final ValueChanged<PokedleSettings> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<PokedleDexScope>(
+          segments: [
+            for (final scope in PokedleDexScope.values)
+              ButtonSegment<PokedleDexScope>(
+                value: scope,
+                label: Text(scope.label),
+              ),
+          ],
+          selected: {settings.dexScope},
+          onSelectionChanged: (selection) {
+            onChanged(
+              PokedleSettings(
+                dexScope: selection.first,
+                attemptMode: settings.attemptMode,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<PokedleAttemptMode>(
+          segments: [
+            for (final mode in PokedleAttemptMode.values)
+              ButtonSegment<PokedleAttemptMode>(
+                value: mode,
+                icon: Icon(
+                  mode == PokedleAttemptMode.hard
+                      ? Icons.timer_outlined
+                      : Icons.all_inclusive,
+                ),
+                label: Text(mode.label),
+              ),
+          ],
+          selected: {settings.attemptMode},
+          onSelectionChanged: (selection) {
+            onChanged(
+              PokedleSettings(
+                dexScope: settings.dexScope,
+                attemptMode: selection.first,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _AttemptSummary extends StatelessWidget {
+  const _AttemptSummary({required this.guesses, required this.attemptMode});
+
+  final int guesses;
+  final PokedleAttemptMode attemptMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxAttempts = attemptMode.maxAttempts;
+    final text = maxAttempts == null
+        ? 'Intentos: $guesses'
+        : 'Intentos: $guesses/$maxAttempts';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          maxAttempts == null ? Icons.all_inclusive : Icons.timer_outlined,
+          size: 18,
+        ),
+        const SizedBox(width: 6),
+        Text(text),
+      ],
+    );
   }
 }
 

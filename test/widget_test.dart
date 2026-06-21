@@ -333,6 +333,7 @@ void main() {
 
   testWidgets('Opens profile from the main menu', (WidgetTester tester) async {
     final userDataRepository = MemoryUserDataRepository();
+    final pokedleProgressRepository = MemoryPokedleProgressRepository();
     await userDataRepository.writeFavoritePokemonIds({1, 4});
     await userDataRepository.writeNote(
       PokemonNote(
@@ -349,11 +350,24 @@ void main() {
         updatedAt: DateTime(2026, 6, 21),
       ),
     );
+    await pokedleProgressRepository.writeResult(
+      PokedleDailyResult(
+        sessionKey: '2026-06-21.classic.hard',
+        dateKey: '2026-06-21',
+        dexScope: PokedleDexScope.classic,
+        attemptMode: PokedleAttemptMode.hard,
+        targetId: 1,
+        won: true,
+        attempts: 3,
+        completedAt: DateTime(2026, 6, 21),
+      ),
+    );
 
     await tester.pumpWidget(
       MyApp(
         pokemonRepository: pokemonRepository,
         userDataRepository: userDataRepository,
+        pokedleProgressRepository: pokedleProgressRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -370,7 +384,16 @@ void main() {
     expect(find.text('Notas'), findsOneWidget);
     expect(find.text('Equipos'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
-    expect(find.text('1'), findsNWidgets(2));
+    expect(find.text('1'), findsWidgets);
+
+    await tester.tap(find.text('Pokedle'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Partidas'), findsOneWidget);
+    expect(find.text('Victorias'), findsOneWidget);
+    expect(find.text('Racha actual'), findsOneWidget);
+    expect(find.text('Mejor racha'), findsOneWidget);
+    expect(find.text('Ratio de victoria'), findsOneWidget);
   });
 
   testWidgets('Opens About us and Help pages from the main menu', (
@@ -517,14 +540,22 @@ void main() {
 
     expect(find.text('Ganaste POKEDLE PRO'), findsOneWidget);
     expect(
-      find.text('Adivinaste el Pokemon diario: Bulbasaur.'),
+      find.text('Adivinaste el Pokemon diario: Bulbasaur en 2 intentos.'),
       findsOneWidget,
     );
     await tester.tap(find.text('Cerrar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Correcto: Bulbasaur'), findsOneWidget);
-    expect(await progressRepository.readGuessIds('2026-06-22'), [4, 1]);
+    expect(await progressRepository.readGuessIds('2026-06-22.classic.hard'), [
+      4,
+      1,
+    ]);
+    final result = await progressRepository.readResult(
+      '2026-06-22.classic.hard',
+    );
+    expect(result?.won, isTrue);
+    expect(result?.attempts, 2);
   });
 
   testWidgets('Switches between light and dark mode', (

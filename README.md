@@ -24,7 +24,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Persistencia local del modo claro y modo oscuro.
 - Pantalla real de Settings con preferencias y estado de datos locales.
 - Daily Randommon funcional.
-- POKEDLE PRO inicial con Pokemon diario, intentos locales y comparacion de atributos.
+- POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, modos Gen 1-2/Todos y dificultad facil/dificil.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
@@ -34,7 +34,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Repositorio local de datos de usuario para favoritos, notas y equipos.
 - Favoritos locales desde tarjetas y detalle de Pokemon.
 - Pantalla dedicada para ver Pokemon favoritos.
-- Pantalla de perfil de usuario con resumen local y estado de Supabase.
+- Pantalla de perfil de usuario con resumen local, estado de Supabase e historial/rachas de Pokedle.
 - Pantallas reales de About us y Help.
 - Cliente Supabase opcional por variables de entorno.
 - Migracion inicial de Supabase para favoritos, notas y equipos con RLS.
@@ -54,8 +54,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Sincronizacion de equipos con Supabase.
 - Sincronizacion de notas personales con Supabase.
 - Configuracion de proyecto Supabase en dashboard.
-- Perfil de usuario.
-- Expandir POKEDLE PRO con mas atributos, historial, rachas y sincronizacion.
+- Expandir POKEDLE PRO con mas atributos, estadisticas por modo y sincronizacion.
 - Mas pruebas sobre rangos de stats, estados de error y flujos autenticados.
 
 ## Comandos utiles

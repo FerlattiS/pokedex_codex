@@ -13,6 +13,9 @@ Idea base:
 - Se selecciona un Pokemon diario de forma deterministica por fecha.
 - El usuario ingresa Pokemon como intentos.
 - Cada intento se compara contra el Pokemon oculto.
+- Se puede jugar con alcance Gen 1-2 o con todos los Pokemon.
+- Se puede jugar en modo dificil con 10 intentos o facil sin limite.
+- El resultado diario se guarda localmente para estadisticas de perfil.
 - Verde significa coincidencia exacta.
 - Rojo significa que no coincide.
 - Amarillo significa coincidencia en otra posicion cuando aplica, por ejemplo
@@ -29,14 +32,21 @@ Comparaciones del MVP:
 - Peso.
 - Stat mas alto.
 
+Ya implementado:
+
+- Selector de alcance Gen 1-2/Todos.
+- Selector de dificultad Facil/Dificil.
+- Historial local de resultados por fecha, alcance y dificultad.
+- Perfil general con pestana Pokedle, partidas, victorias, racha actual,
+  mejor racha, ratio de victoria y promedio de intentos ganados.
+
 Pendientes para este modo:
 
 - Agregar color de especie.
 - Agregar formas regionales, megaevoluciones, Gigamax y variantes especiales.
 - Mejorar altura y peso con pistas visuales mas claras.
-- Limitar intentos diarios o configurar dificultad.
 - Mostrar historial de intentos por dia.
-- Persistir resultado diario y racha en perfil.
+- Separar estadisticas por modo y dificultad.
 - Sincronizar progreso con Supabase cuando exista login.
 - Agregar animacion o estado especial al ganar.
 

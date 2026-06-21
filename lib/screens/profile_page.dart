@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../services/pokedle_progress_repository.dart';
 import '../services/user_data_repository.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
     required this.userDataRepository,
+    required this.pokedleProgressRepository,
     required this.isSupabaseConfigured,
   });
 
   final UserDataRepository userDataRepository;
+  final PokedleProgressRepository pokedleProgressRepository;
   final bool isSupabaseConfigured;
 
   @override
@@ -23,11 +26,13 @@ class _ProfilePageState extends State<ProfilePage> {
     final favorites = await widget.userDataRepository.readFavoritePokemonIds();
     final notes = await widget.userDataRepository.readNotes();
     final teams = await widget.userDataRepository.readTeams();
+    final pokedleResults = await widget.pokedleProgressRepository.readResults();
 
     return _ProfileStats(
       favoriteCount: favorites.length,
       noteCount: notes.length,
       teamCount: teams.length,
+      pokedleStats: _PokedleProfileStats.fromResults(pokedleResults),
     );
   }
 
@@ -38,86 +43,137 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context, snapshot) {
         final stats = snapshot.data;
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text('Entrenador', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+        return DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              const TabBar(
+                tabs: [
+                  Tab(icon: Icon(Icons.person_outline), text: 'General'),
+                  Tab(icon: Icon(Icons.catching_pokemon), text: 'Pokedle'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      child: Icon(
-                        Icons.person_outline,
-                        size: 36,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
+                    ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        Text(
+                          'Entrenador',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 32,
+                                  child: Icon(
+                                    Icons.person_outline,
+                                    size: 36,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Invitado',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        widget.isSupabaseConfigured
+                                            ? 'Supabase configurado, login pendiente'
+                                            : 'Modo local sin Supabase configurado',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Resumen',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        if (snapshot.connectionState != ConnectionState.done)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          _StatsGrid(stats: stats ?? _ProfileStats.empty()),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Cuenta',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: Icon(
+                                  widget.isSupabaseConfigured
+                                      ? Icons.cloud_done_outlined
+                                      : Icons.cloud_off_outlined,
+                                ),
+                                title: Text(
+                                  widget.isSupabaseConfigured
+                                      ? 'Backend disponible'
+                                      : 'Backend no configurado',
+                                ),
+                                subtitle: const Text(
+                                  'El perfil se sincronizara cuando agreguemos autenticacion.',
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              const ListTile(
+                                leading: Icon(Icons.badge_outlined),
+                                title: Text('Perfil remoto'),
+                                subtitle: Text(
+                                  'Preparado para nombre, titulo de entrenador y preferencias.',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Invitado',
-                            style: Theme.of(context).textTheme.titleMedium,
+                    ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        Text(
+                          'Pokedle',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        if (snapshot.connectionState != ConnectionState.done)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          _PokedleProfileSection(
+                            stats:
+                                stats?.pokedleStats ??
+                                _PokedleProfileStats.empty(),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.isSupabaseConfigured
-                                ? 'Supabase configurado, login pendiente'
-                                : 'Modo local sin Supabase configurado',
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text('Resumen', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            if (snapshot.connectionState != ConnectionState.done)
-              const Center(child: CircularProgressIndicator())
-            else
-              _StatsGrid(stats: stats ?? _ProfileStats.empty()),
-            const SizedBox(height: 24),
-            Text('Cuenta', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      widget.isSupabaseConfigured
-                          ? Icons.cloud_done_outlined
-                          : Icons.cloud_off_outlined,
-                    ),
-                    title: Text(
-                      widget.isSupabaseConfigured
-                          ? 'Backend disponible'
-                          : 'Backend no configurado',
-                    ),
-                    subtitle: const Text(
-                      'El perfil se sincronizara cuando agreguemos autenticacion.',
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  const ListTile(
-                    leading: Icon(Icons.badge_outlined),
-                    title: Text('Perfil remoto'),
-                    subtitle: Text(
-                      'Preparado para nombre, titulo de entrenador y preferencias.',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -142,6 +198,52 @@ class _StatsGrid extends StatelessWidget {
         _StatTile(label: 'Favoritos', value: stats.favoriteCount),
         _StatTile(label: 'Notas', value: stats.noteCount),
         _StatTile(label: 'Equipos', value: stats.teamCount),
+      ],
+    );
+  }
+}
+
+class _PokedleProfileSection extends StatelessWidget {
+  const _PokedleProfileSection({required this.stats});
+
+  final _PokedleProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 1.8,
+          children: [
+            _StatTile(label: 'Partidas', value: stats.gamesPlayed),
+            _StatTile(label: 'Victorias', value: stats.wins),
+            _StatTile(label: 'Racha actual', value: stats.currentStreak),
+            _StatTile(label: 'Mejor racha', value: stats.bestStreak),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.percent_outlined),
+                title: const Text('Ratio de victoria'),
+                trailing: Text('${stats.winRate}%'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.speed_outlined),
+                title: const Text('Promedio de intentos ganados'),
+                trailing: Text(stats.averageWinningAttempts),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -175,13 +277,96 @@ class _ProfileStats {
     required this.favoriteCount,
     required this.noteCount,
     required this.teamCount,
+    required this.pokedleStats,
   });
 
   factory _ProfileStats.empty() {
-    return const _ProfileStats(favoriteCount: 0, noteCount: 0, teamCount: 0);
+    return _ProfileStats(
+      favoriteCount: 0,
+      noteCount: 0,
+      teamCount: 0,
+      pokedleStats: _PokedleProfileStats.empty(),
+    );
   }
 
   final int favoriteCount;
   final int noteCount;
   final int teamCount;
+  final _PokedleProfileStats pokedleStats;
+}
+
+class _PokedleProfileStats {
+  const _PokedleProfileStats({
+    required this.gamesPlayed,
+    required this.wins,
+    required this.currentStreak,
+    required this.bestStreak,
+    required this.winRate,
+    required this.averageWinningAttempts,
+  });
+
+  factory _PokedleProfileStats.empty() {
+    return const _PokedleProfileStats(
+      gamesPlayed: 0,
+      wins: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+      winRate: 0,
+      averageWinningAttempts: '-',
+    );
+  }
+
+  factory _PokedleProfileStats.fromResults(List<PokedleDailyResult> results) {
+    if (results.isEmpty) {
+      return _PokedleProfileStats.empty();
+    }
+
+    final sortedResults = [
+      ...results,
+    ]..sort((first, second) => first.completedAt.compareTo(second.completedAt));
+    final wins = sortedResults.where((result) => result.won).toList();
+    var currentStreak = 0;
+    for (final result in sortedResults.reversed) {
+      if (!result.won) {
+        break;
+      }
+
+      currentStreak += 1;
+    }
+
+    var runningStreak = 0;
+    var bestStreak = 0;
+    for (final result in sortedResults) {
+      if (result.won) {
+        runningStreak += 1;
+        if (runningStreak > bestStreak) {
+          bestStreak = runningStreak;
+        }
+      } else {
+        runningStreak = 0;
+      }
+    }
+
+    final averageAttempts = wins.isEmpty
+        ? '-'
+        : (wins.fold<int>(0, (sum, result) => sum + result.attempts) /
+                  wins.length)
+              .toStringAsFixed(1);
+
+    return _PokedleProfileStats(
+      gamesPlayed: sortedResults.length,
+      wins: wins.length,
+      currentStreak: currentStreak,
+      bestStreak: bestStreak,
+      winRate: ((wins.length / sortedResults.length) * 100).round(),
+      averageWinningAttempts: averageAttempts,
+    );
+  }
+
+  final int gamesPlayed;
+  final int wins;
+  final int currentStreak;
+  final int bestStreak;
+  final int winRate;
+  final String averageWinningAttempts;
 }
