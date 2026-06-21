@@ -31,7 +31,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Favoritos locales desde tarjetas y detalle de Pokemon.
 - Pantalla dedicada para ver Pokemon favoritos.
 - Pantallas reales de About us y Help.
-- Dependencia e inicializacion opcional de Supabase por variables de entorno.
+- Cliente Supabase opcional por variables de entorno.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 
@@ -55,8 +55,22 @@ flutter analyze
 flutter test
 ```
 
+## Supabase
+
+La app esta preparada para crear un cliente Supabase sin hardcodear claves. Por
+ahora se usa el paquete Dart `supabase` para evitar cargar plugins web de
+autenticacion que todavia no estamos usando.
+
 Para iniciar Supabase en la app, pasa la URL del proyecto y la publishable key:
 
 ```bash
 flutter run --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
 ```
+
+Notas:
+
+- `SUPABASE_URL` sale del dashboard del proyecto.
+- `SUPABASE_PUBLISHABLE_KEY` es la clave publica para clientes Flutter.
+- No usar service role keys en la app.
+- La app sigue funcionando con datos locales si esas variables no estan.
+- Antes de sincronizar favoritos, equipos o notas hay que crear tablas con RLS.

@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase/supabase.dart';
 
 class SupabaseConfig {
   const SupabaseConfig({
@@ -14,17 +14,12 @@ class SupabaseConfig {
   bool get isConfigured => url.isNotEmpty && publishableKey.isNotEmpty;
 }
 
-Future<SupabaseClient?> initializeSupabase({
+SupabaseClient? initializeSupabase({
   SupabaseConfig config = const SupabaseConfig(),
-}) async {
+}) {
   if (!config.isConfigured) {
     return null;
   }
 
-  await Supabase.initialize(
-    url: config.url,
-    publishableKey: config.publishableKey,
-  );
-
-  return Supabase.instance.client;
+  return SupabaseClient(config.url, config.publishableKey);
 }

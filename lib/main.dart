@@ -14,7 +14,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
-  final supabaseClient = await initializeSupabase();
+  final supabaseClient = initializeSupabase();
   final appSettingsRepository = SharedPreferencesAppSettingsRepository(
     preferences,
   );
