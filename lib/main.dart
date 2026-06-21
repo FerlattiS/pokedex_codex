@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/app_shell.dart';
 import 'services/app_settings_repository.dart';
+import 'services/pokedle_progress_repository.dart';
 import 'services/pokemon_cache_store.dart';
 import 'services/pokemon_repository.dart';
 import 'services/supabase_service.dart';
@@ -26,6 +27,7 @@ Future<void> main() async {
         cacheStore: SharedPreferencesPokemonCacheStore(preferences),
       ),
       userDataRepository: LocalUserDataRepository(preferences),
+      pokedleProgressRepository: LocalPokedleProgressRepository(preferences),
       appSettingsRepository: appSettingsRepository,
       initialThemeMode: themeMode,
       isSupabaseConfigured: supabaseClient != null,
@@ -38,6 +40,7 @@ class MyApp extends StatefulWidget {
     super.key,
     this.pokemonRepository,
     this.userDataRepository,
+    this.pokedleProgressRepository,
     this.appSettingsRepository,
     this.initialThemeMode = ThemeMode.light,
     this.isSupabaseConfigured = false,
@@ -45,6 +48,7 @@ class MyApp extends StatefulWidget {
 
   final PokemonRepository? pokemonRepository;
   final UserDataRepository? userDataRepository;
+  final PokedleProgressRepository? pokedleProgressRepository;
   final AppSettingsRepository? appSettingsRepository;
   final ThemeMode initialThemeMode;
   final bool isSupabaseConfigured;
@@ -91,6 +95,9 @@ class _MyAppState extends State<MyApp> {
             widget.pokemonRepository ?? PokeApiPokemonRepository(),
         userDataRepository:
             widget.userDataRepository ?? MemoryUserDataRepository(),
+        pokedleProgressRepository:
+            widget.pokedleProgressRepository ??
+            MemoryPokedleProgressRepository(),
         isDarkMode: _themeMode == ThemeMode.dark,
         onDarkModeChanged: _setDarkMode,
         isSupabaseConfigured: widget.isSupabaseConfigured,

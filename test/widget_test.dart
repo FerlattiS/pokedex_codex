@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
 import 'package:pokedex_codex/models/user_pokemon_data.dart';
+import 'package:pokedex_codex/screens/pokedle_page.dart';
+import 'package:pokedex_codex/services/pokedle_progress_repository.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
 import 'package:pokedex_codex/services/user_data_repository.dart';
 
@@ -449,6 +451,70 @@ void main() {
     expect(find.text('Altura'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Habilidades'), 120);
     expect(find.text('Habilidades'), findsOneWidget);
+  });
+
+  testWidgets('Opens POKEDLE PRO from the main menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('POKEDLE PRO'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('POKEDLE PRO'), findsWidgets);
+    expect(find.text('Adivina el Pokemon diario'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pokedleGuessField')), findsOneWidget);
+  });
+
+  testWidgets('Plays Pokedle guesses for the daily Pokemon', (
+    WidgetTester tester,
+  ) async {
+    final progressRepository = MemoryPokedleProgressRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PokedlePage(
+            pokemonRepository: pokemonRepository,
+            progressRepository: progressRepository,
+            date: DateTime(2026, 6, 22),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Todavia no hay intentos'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('pokedleGuessField')),
+      'char',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Charmander').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Probar'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('#004 Charmander'), findsOneWidget);
+    expect(find.text('Tipo 1'), findsOneWidget);
+    expect(find.text('Stat top'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('pokedleGuessField')),
+      'bulba',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bulbasaur').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Probar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Correcto: Bulbasaur'), findsOneWidget);
+    expect(await progressRepository.readGuessIds('2026-06-22'), [4, 1]);
   });
 
   testWidgets('Switches between light and dark mode', (

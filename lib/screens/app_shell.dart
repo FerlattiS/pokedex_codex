@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../services/pokemon_repository.dart';
+import '../services/pokedle_progress_repository.dart';
 import '../services/user_data_repository.dart';
 import 'about_us_page.dart';
 import 'daily_randommon_page.dart';
 import 'favorites_page.dart';
 import 'help_page.dart';
 import 'pokedex_home_page.dart';
+import 'pokedle_page.dart';
 import 'placeholder_page.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
@@ -28,6 +30,7 @@ class AppShell extends StatefulWidget {
     super.key,
     required this.pokemonRepository,
     required this.userDataRepository,
+    required this.pokedleProgressRepository,
     required this.isDarkMode,
     required this.onDarkModeChanged,
     required this.isSupabaseConfigured,
@@ -35,6 +38,7 @@ class AppShell extends StatefulWidget {
 
   final PokemonRepository pokemonRepository;
   final UserDataRepository userDataRepository;
+  final PokedleProgressRepository pokedleProgressRepository;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
   final bool isSupabaseConfigured;
@@ -84,9 +88,9 @@ class _AppShellState extends State<AppShell> {
           pokemonRepository: widget.pokemonRepository,
           userDataRepository: widget.userDataRepository,
         ),
-        MainMenuDestination.pokedlePro => const PlaceholderPage(
-          title: 'POKEDLE PRO',
-          message: 'Proyecto disponible mas adelante.',
+        MainMenuDestination.pokedlePro => PokedlePage(
+          pokemonRepository: widget.pokemonRepository,
+          progressRepository: widget.pokedleProgressRepository,
         ),
         MainMenuDestination.quit => const PlaceholderPage(
           title: 'Quit',
