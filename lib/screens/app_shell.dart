@@ -132,36 +132,54 @@ class _MainMenuHomePage extends StatelessWidget {
         title: 'Pokedex',
         subtitle: 'Explorar catalogo, filtros y detalles',
         icon: Icons.catching_pokemon,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
+        accentColor: Color(0xFF2E7D32),
         destination: MainMenuDestination.pokedex,
       ),
       _HomeDestination(
         title: 'POKEDLE PRO',
         subtitle: 'Adivinar el Pokemon diario',
         icon: Icons.grid_view,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10088.png',
+        accentColor: Color(0xFFC2185B),
         destination: MainMenuDestination.pokedlePro,
       ),
       _HomeDestination(
         title: 'Higher or Lower',
         subtitle: 'Adivinar quien tiene mas battle stats total',
         icon: Icons.trending_up,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png',
+        accentColor: Color(0xFF5E35B1),
         destination: MainMenuDestination.higherOrLower,
       ),
       _HomeDestination(
         title: 'Daily Randommon',
         subtitle: 'Pokemon aleatorio del dia',
         icon: Icons.today_outlined,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png',
+        accentColor: Color(0xFFEF6C00),
         destination: MainMenuDestination.dailyRandommon,
       ),
       _HomeDestination(
         title: 'Perfil',
         subtitle: 'Resumen, favoritos y estadisticas',
         icon: Icons.person_outline,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
+        accentColor: Color(0xFFF9A825),
         destination: MainMenuDestination.profile,
       ),
       _HomeDestination(
         title: 'Favoritos',
         subtitle: 'Ver Pokemon guardados',
         icon: Icons.star_outline,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/175.png',
+        accentColor: Color(0xFF00838F),
         destination: MainMenuDestination.favorites,
       ),
     ];
@@ -185,35 +203,13 @@ class _MainMenuHomePage extends StatelessWidget {
             maxCrossAxisExtent: 320,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.45,
+            childAspectRatio: 1.35,
           ),
           itemBuilder: (context, index) {
             final item = destinations[index];
-            return Card(
-              child: InkWell(
-                onTap: () => onDestinationSelected(item.destination),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(item.icon, size: 30),
-                      const Spacer(),
-                      Text(
-                        item.title,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            return _HomeDestinationCard(
+              item: item,
+              onTap: () => onDestinationSelected(item.destination),
             );
           },
         ),
@@ -227,13 +223,98 @@ class _HomeDestination {
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.spriteUrl,
+    required this.accentColor,
     required this.destination,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
+  final String spriteUrl;
+  final Color accentColor;
   final MainMenuDestination destination;
+}
+
+class _HomeDestinationCard extends StatelessWidget {
+  const _HomeDestinationCard({required this.item, required this.onTap});
+
+  final _HomeDestination item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: item.accentColor.withValues(alpha: 0.08),
+                  border: Border(
+                    left: BorderSide(color: item.accentColor, width: 5),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -8,
+              top: 8,
+              bottom: 4,
+              child: Opacity(
+                opacity: 0.26,
+                child: Image.network(
+                  item.spriteUrl,
+                  width: 118,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: item.accentColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(item.icon, color: item.accentColor, size: 24),
+                  ),
+                  const Spacer(),
+                  Text(
+                    item.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PokedleAppBarTitle extends StatelessWidget {

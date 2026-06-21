@@ -25,6 +25,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   var _bestStreak = 0;
   var _isRevealed = false;
   var _isLoadingNext = false;
+  int? _selectedPokemonId;
 
   Future<void> _loadRound() async {
     final catalog = _catalog.isEmpty
@@ -58,6 +59,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
       _lastGuessWasCorrect = null;
       _isRevealed = false;
       _isLoadingNext = false;
+      _selectedPokemonId = null;
     });
   }
 
@@ -81,6 +83,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
     setState(() {
       _isRevealed = true;
       _lastGuessWasCorrect = isCorrect;
+      _selectedPokemonId = selected.id;
       _streak = isCorrect ? _streak + 1 : 0;
       if (_streak > _bestStreak) {
         _bestStreak = _streak;
@@ -156,12 +159,20 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
                   pokemon: _leftPokemon!,
                   isRevealed: _isRevealed,
                   total: _battleStatTotal(_leftPokemon!),
+                  isBestMatch:
+                      _battleStatTotal(_leftPokemon!) >=
+                      _battleStatTotal(_rightPokemon!),
+                  isSelected: _selectedPokemonId == _leftPokemon!.id,
                   onChoose: () => _choose(_leftPokemon!),
                 );
                 final rightCard = _HigherLowerCard(
                   pokemon: _rightPokemon!,
                   isRevealed: _isRevealed,
                   total: _battleStatTotal(_rightPokemon!),
+                  isBestMatch:
+                      _battleStatTotal(_rightPokemon!) >=
+                      _battleStatTotal(_leftPokemon!),
+                  isSelected: _selectedPokemonId == _rightPokemon!.id,
                   onChoose: () => _choose(_rightPokemon!),
                 );
                 const separator = Padding(
@@ -184,15 +195,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
             ),
             const SizedBox(height: 16),
             if (_lastGuessWasCorrect != null)
-              Text(
-                _lastGuessWasCorrect! ? 'Correcto' : 'Incorrecto',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: _lastGuessWasCorrect!
-                      ? const Color(0xFF2E7D32)
-                      : const Color(0xFFC62828),
-                ),
-              ),
+              _ResultBanner(isCorrect: _lastGuessWasCorrect!),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _isRevealed ? _nextRound : null,
@@ -215,54 +218,151 @@ class _HigherLowerCard extends StatelessWidget {
     required this.pokemon,
     required this.isRevealed,
     required this.total,
+    required this.isBestMatch,
+    required this.isSelected,
     required this.onChoose,
   });
 
   final PokemonPreview pokemon;
   final bool isRevealed;
   final int total;
+  final bool isBestMatch;
+  final bool isSelected;
   final VoidCallback onChoose;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final highlightColor = isBestMatch
+        ? const Color(0xFF2E7D32)
+        : const Color(0xFFC62828);
+    final borderColor = !isRevealed
+        ? colorScheme.outlineVariant
+        : isBestMatch
+        ? const Color(0xFF2E7D32)
+        : isSelected
+        ? const Color(0xFFC62828)
+        : colorScheme.outlineVariant;
+
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: isRevealed ? null : onChoose,
         borderRadius: BorderRadius.circular(8),
-        child: Padding(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: isRevealed
+                ? highlightColor.withValues(alpha: isBestMatch ? 0.10 : 0.05)
+                : null,
+            border: Border.all(color: borderColor, width: isRevealed ? 2 : 1),
+            borderRadius: BorderRadius.circular(8),
+          ),
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Stack(
             children: [
-              SizedBox(
-                height: 120,
-                child: pokemon.imageUrl == null
-                    ? const Icon(Icons.catching_pokemon, size: 48)
-                    : Image.network(
-                        pokemon.imageUrl!,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.catching_pokemon, size: 48);
-                        },
-                      ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                pokemon.name,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: Text(
-                  isRevealed ? '$total BST' : '??? BST',
-                  key: ValueKey('$isRevealed-${pokemon.id}'),
-                  style: Theme.of(context).textTheme.titleLarge,
+              if (isRevealed && (isBestMatch || isSelected))
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Icon(
+                    isBestMatch ? Icons.check_circle : Icons.cancel,
+                    color: highlightColor,
+                    size: 28,
+                  ),
                 ),
+              Column(
+                children: [
+                  SizedBox(
+                    height: 120,
+                    child: pokemon.imageUrl == null
+                        ? const Icon(Icons.catching_pokemon, size: 48)
+                        : Image.network(
+                            pokemon.imageUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.catching_pokemon,
+                                size: 48,
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    pokemon.name,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: FadeTransition(opacity: animation, child: child),
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey('$isRevealed-${pokemon.id}'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isRevealed
+                            ? highlightColor.withValues(alpha: 0.14)
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isRevealed ? '$total BST' : '??? BST',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ResultBanner extends StatelessWidget {
+  const _ResultBanner({required this.isCorrect});
+
+  final bool isCorrect;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isCorrect ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(isCorrect ? Icons.check_circle : Icons.cancel, color: color),
+          const SizedBox(width: 8),
+          Text(
+            isCorrect ? 'Correcto' : 'Incorrecto',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -276,9 +376,34 @@ class _ScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text('$label: $value'),
-      avatar: const Icon(Icons.local_fire_department_outlined, size: 18),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 116),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.local_fire_department_outlined,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $value',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
     );
   }
 }

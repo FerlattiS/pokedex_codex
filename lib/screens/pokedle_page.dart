@@ -544,13 +544,7 @@ class _GuessCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final result in results) _ResultChip(result: result),
-              ],
-            ),
+            _PokedleResultGrid(results: results),
           ],
         ),
       ),
@@ -785,8 +779,45 @@ class _GuessImage extends StatelessWidget {
   }
 }
 
-class _ResultChip extends StatelessWidget {
-  const _ResultChip({required this.result});
+class _PokedleResultGrid extends StatelessWidget {
+  const _PokedleResultGrid({required this.results});
+
+  final List<_PokedleResult> results;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 760
+            ? 5
+            : width >= 500
+            ? 4
+            : width >= 360
+            ? 3
+            : 2;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: results.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: width < 360 ? 1.42 : 1.55,
+          ),
+          itemBuilder: (context, index) {
+            return _ResultCell(result: results[index]);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ResultCell extends StatelessWidget {
+  const _ResultCell({required this.result});
 
   final _PokedleResult result;
 
@@ -798,44 +829,64 @@ class _ResultChip extends StatelessWidget {
       _PokedleStatus.wrong => const Color(0xFFC62828),
     };
 
-    return Container(
-      width: 118,
-      padding: const EdgeInsets.all(8),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        border: Border.all(color: color, width: 1.5),
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color, width: 1.4),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(result.label, style: Theme.of(context).textTheme.labelSmall),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  result.value,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              color: color.withValues(alpha: 0.22),
+              child: Text(
+                result.label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        result.value,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (result.direction != null) ...[
+                      const SizedBox(width: 3),
+                      Icon(
+                        result.direction == _PokedleDirection.higher
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
+                        size: 15,
+                        color: color,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (result.direction != null) ...[
-                const SizedBox(width: 2),
-                Icon(
-                  result.direction == _PokedleDirection.higher
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,
-                  size: 14,
-                  color: color,
-                ),
-              ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
