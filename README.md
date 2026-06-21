@@ -32,6 +32,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pantalla dedicada para ver Pokemon favoritos.
 - Pantallas reales de About us y Help.
 - Cliente Supabase opcional por variables de entorno.
+- Migracion inicial de Supabase para favoritos, notas y equipos con RLS.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 
@@ -39,10 +40,10 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 
 - Ajustes de accesibilidad y responsive fino para web y Android.
 - Pantallas de equipos y notas usando el repositorio local actual.
-- Sincronizacion de favoritos con Supabase.
+- Autenticacion con Supabase.
+- Repositorio remoto para sincronizar favoritos con Supabase.
 - Sincronizacion de equipos con Supabase.
 - Sincronizacion de notas personales con Supabase.
-- Autenticacion con Supabase.
 - Configuracion de proyecto Supabase en dashboard.
 - Perfil de usuario.
 - POKEDLE PRO como proyecto derivado cuando la app base este mas solida.
@@ -73,4 +74,7 @@ Notas:
 - `SUPABASE_PUBLISHABLE_KEY` es la clave publica para clientes Flutter.
 - No usar service role keys en la app.
 - La app sigue funcionando con datos locales si esas variables no estan.
-- Antes de sincronizar favoritos, equipos o notas hay que crear tablas con RLS.
+- La migracion inicial esta en `supabase/migrations/202606210001_create_user_data_tables.sql`.
+- Esa migracion crea `favorite_pokemon`, `pokemon_notes` y `pokemon_teams`.
+- Todas las tablas usan RLS con `auth.uid() = user_id`.
+- Para aplicarla desde el dashboard, abre SQL Editor y ejecuta el archivo completo.
