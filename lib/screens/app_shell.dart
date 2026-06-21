@@ -8,11 +8,13 @@ import 'favorites_page.dart';
 import 'help_page.dart';
 import 'pokedex_home_page.dart';
 import 'placeholder_page.dart';
+import 'profile_page.dart';
 import 'settings_page.dart';
 
 enum MainMenuDestination {
   pokedex,
   favorites,
+  profile,
   aboutUs,
   help,
   settings,
@@ -66,6 +68,10 @@ class _AppShellState extends State<AppShell> {
         MainMenuDestination.favorites => FavoritesPage(
           pokemonRepository: widget.pokemonRepository,
           userDataRepository: widget.userDataRepository,
+        ),
+        MainMenuDestination.profile => ProfilePage(
+          userDataRepository: widget.userDataRepository,
+          isSupabaseConfigured: widget.isSupabaseConfigured,
         ),
         MainMenuDestination.aboutUs => const AboutUsPage(),
         MainMenuDestination.help => const HelpPage(),
@@ -126,6 +132,10 @@ class _MainMenuDrawer extends StatelessWidget {
           label: Text('Favoritos'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.person_outline),
+          label: Text('Perfil'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.info_outline),
           label: Text('About us'),
         ),
@@ -166,6 +176,7 @@ extension on MainMenuDestination {
     return switch (this) {
       MainMenuDestination.pokedex => 'Pokedex Codex Pro',
       MainMenuDestination.favorites => 'Favoritos',
+      MainMenuDestination.profile => 'Perfil',
       MainMenuDestination.aboutUs => 'About us',
       MainMenuDestination.help => 'Help',
       MainMenuDestination.settings => 'Settings',

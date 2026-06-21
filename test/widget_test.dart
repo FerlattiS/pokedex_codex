@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
+import 'package:pokedex_codex/models/user_pokemon_data.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
 import 'package:pokedex_codex/services/user_data_repository.dart';
 
@@ -213,6 +214,7 @@ void main() {
 
     expect(find.text('Pokedex'), findsOneWidget);
     expect(find.text('Favoritos'), findsOneWidget);
+    expect(find.text('Perfil'), findsOneWidget);
     expect(find.text('About us'), findsOneWidget);
     expect(find.text('Help'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
@@ -245,6 +247,48 @@ void main() {
     expect(find.text('Bulbasaur'), findsOneWidget);
     expect(find.text('Squirtle'), findsOneWidget);
     expect(find.text('Charmander'), findsNothing);
+  });
+
+  testWidgets('Opens profile from the main menu', (WidgetTester tester) async {
+    final userDataRepository = MemoryUserDataRepository();
+    await userDataRepository.writeFavoritePokemonIds({1, 4});
+    await userDataRepository.writeNote(
+      PokemonNote(
+        pokemonId: 1,
+        text: 'Starter favorito.',
+        updatedAt: DateTime(2026, 6, 21),
+      ),
+    );
+    await userDataRepository.writeTeam(
+      PokemonTeam(
+        id: 'team-1',
+        name: 'Equipo Kanto',
+        pokemonIds: [1, 4, 7],
+        updatedAt: DateTime(2026, 6, 21),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MyApp(
+        pokemonRepository: pokemonRepository,
+        userDataRepository: userDataRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrenador'), findsOneWidget);
+    expect(find.text('Invitado'), findsOneWidget);
+    expect(find.text('Modo local sin Supabase configurado'), findsOneWidget);
+    expect(find.text('Favoritos'), findsOneWidget);
+    expect(find.text('Notas'), findsOneWidget);
+    expect(find.text('Equipos'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('1'), findsNWidgets(2));
   });
 
   testWidgets('Opens About us and Help pages from the main menu', (
@@ -337,6 +381,8 @@ void main() {
 
     expect(find.byIcon(Icons.light_mode), findsOneWidget);
 
+    await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
 

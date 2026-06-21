@@ -30,9 +30,11 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Repositorio local de datos de usuario para favoritos, notas y equipos.
 - Favoritos locales desde tarjetas y detalle de Pokemon.
 - Pantalla dedicada para ver Pokemon favoritos.
+- Pantalla de perfil de usuario con resumen local y estado de Supabase.
 - Pantallas reales de About us y Help.
 - Cliente Supabase opcional por variables de entorno.
 - Migracion inicial de Supabase para favoritos, notas y equipos con RLS.
+- Migracion de Supabase para perfil de usuario con RLS.
 - Repositorio remoto base para datos de usuario en Supabase.
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
@@ -43,6 +45,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pantallas de equipos y notas usando el repositorio local actual.
 - Autenticacion con Supabase.
 - Conectar el repositorio remoto de Supabase al flujo autenticado.
+- Edicion del perfil de usuario.
 - Sincronizacion de favoritos con Supabase.
 - Sincronizacion de equipos con Supabase.
 - Sincronizacion de notas personales con Supabase.
@@ -73,6 +76,7 @@ Responsabilidades de Supabase:
 
 - Autenticar usuarios cuando se agregue login.
 - Guardar favoritos, notas personales y equipos por usuario.
+- Guardar datos de perfil propios de la app, como nombre visible, titulo de entrenador y preferencias.
 - Proteger esos datos con RLS para que cada usuario lea y escriba solo lo suyo.
 - Servir como punto de sincronizacion entre web, Android y futuros dispositivos.
 - Mantener datos de perfil cuando esa pantalla exista.
@@ -88,8 +92,9 @@ Estado actual de la integracion:
 
 - El cliente Supabase se crea solo si existen variables `--dart-define`.
 - La app sigue usando persistencia local mientras no exista usuario autenticado.
-- Ya existe una migracion SQL para tablas y politicas RLS.
+- Ya existen migraciones SQL para tablas y politicas RLS.
 - Ya existe un repositorio remoto base para favoritos, notas y equipos.
+- Ya existe una pantalla de perfil que muestra resumen local y estado de cuenta.
 - Falta conectar ese repositorio al flujo real de autenticacion y sincronizacion.
 
 Para iniciar Supabase en la app, pasa la URL del proyecto y la publishable key:
@@ -106,5 +111,7 @@ Notas:
 - La app sigue funcionando con datos locales si esas variables no estan.
 - La migracion inicial esta en `supabase/migrations/202606210001_create_user_data_tables.sql`.
 - Esa migracion crea `favorite_pokemon`, `pokemon_notes` y `pokemon_teams`.
+- La migracion de perfil esta en `supabase/migrations/202606210002_create_user_profiles_table.sql`.
+- Esa migracion crea `user_profiles`.
 - Todas las tablas usan RLS con `auth.uid() = user_id`.
 - Para aplicarla desde el dashboard, abre SQL Editor y ejecuta el archivo completo.
