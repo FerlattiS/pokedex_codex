@@ -16,6 +16,9 @@ void main() {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
 
+    expect(find.text('Elegi por donde empezar'), findsOneWidget);
+    await _openPokedex(tester);
+
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.text('Pokedex Codex Pro'), findsOneWidget);
     expect(find.text('Explora el mundo Pokemon'), findsNothing);
@@ -37,6 +40,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -53,6 +57,7 @@ void main() {
   testWidgets('Filters Pokemon by selected type', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -73,6 +78,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -96,6 +102,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -111,6 +118,7 @@ void main() {
   testWidgets('Filters Pokemon by generation', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -135,6 +143,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -151,6 +160,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -174,6 +184,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -196,6 +207,7 @@ void main() {
   testWidgets('Sorts Pokemon by name descending', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -218,6 +230,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Busqueda y filtros'));
     await tester.pumpAndSettle();
@@ -252,6 +265,7 @@ void main() {
   ) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     expect(find.byType(GridView), findsNothing);
 
@@ -274,6 +288,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.byTooltip('Agregar favorito').first);
     await tester.pumpAndSettle();
@@ -294,15 +309,27 @@ void main() {
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pokedex'), findsOneWidget);
-    expect(find.text('Favoritos'), findsOneWidget);
-    expect(find.text('Perfil'), findsOneWidget);
+    expect(find.text('Menu'), findsWidgets);
+    expect(find.text('Pokedex'), findsWidgets);
+    expect(find.text('Favoritos'), findsWidgets);
+    expect(find.text('Perfil'), findsWidgets);
     expect(find.text('About us'), findsOneWidget);
     expect(find.text('Help'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Daily Randommon'), findsOneWidget);
-    expect(find.text('POKEDLE PRO'), findsOneWidget);
+    expect(find.text('Daily Randommon'), findsWidgets);
+    expect(find.text('POKEDLE PRO'), findsWidgets);
+    expect(find.text('Higher or Lower'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('Quit'),
+      120,
+      scrollable: _drawerScrollView(),
+    );
     expect(find.text('Quit'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Modo oscuro'),
+      120,
+      scrollable: _drawerScrollView(),
+    );
     expect(find.text('Modo oscuro'), findsOneWidget);
   });
 
@@ -320,8 +347,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Favoritos'));
     await tester.pumpAndSettle();
 
@@ -372,8 +397,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
 
@@ -451,8 +474,6 @@ void main() {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Daily Randommon'));
     await tester.pumpAndSettle();
 
@@ -464,8 +485,6 @@ void main() {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Daily Randommon'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ver detalle'));
@@ -482,14 +501,37 @@ void main() {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('POKEDLE PRO'));
     await tester.pumpAndSettle();
 
     expect(find.text('POKEDLE PRO'), findsWidgets);
     expect(find.text('Adivina el Pokemon diario'), findsOneWidget);
     expect(find.byKey(const ValueKey('pokedleGuessField')), findsOneWidget);
+  });
+
+  testWidgets('Opens Higher or Lower from the main menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Higher or Lower'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Higher or Lower'), findsWidgets);
+    expect(
+      find.text('Elegi cual tiene mayor battle stats total'),
+      findsOneWidget,
+    );
+    expect(find.text('Racha: 0'), findsOneWidget);
+    expect(find.text('Mejor: 0'), findsOneWidget);
+    expect(find.text('??? BST'), findsNWidgets(2));
+
+    await tester.tap(find.byType(InkWell).first);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('BST'), findsWidgets);
+    expect(find.text('Siguiente'), findsOneWidget);
   });
 
   testWidgets('Plays Pokedle guesses for the daily Pokemon', (
@@ -526,6 +568,8 @@ void main() {
     expect(find.textContaining('#004'), findsNothing);
     expect(find.byIcon(Icons.catching_pokemon), findsOneWidget);
     expect(find.text('Tipo 1'), findsOneWidget);
+    expect(find.text('Color'), findsOneWidget);
+    expect(find.text('Forma'), findsOneWidget);
     expect(find.text('Stat top'), findsOneWidget);
 
     await tester.enterText(
@@ -567,9 +611,11 @@ void main() {
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.light_mode), findsOneWidget);
-
-    await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.scrollUntilVisible(
+      find.text('Modo oscuro'),
+      120,
+      scrollable: _drawerScrollView(),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
@@ -580,6 +626,7 @@ void main() {
   testWidgets('Opens Pokemon detail page', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Bulbasaur'));
     await tester.pumpAndSettle();
@@ -618,6 +665,7 @@ void main() {
   testWidgets('Opens ability detail dialog', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Bulbasaur'));
     await tester.pumpAndSettle();
@@ -633,6 +681,7 @@ void main() {
   testWidgets('Opens move detail dialog', (WidgetTester tester) async {
     await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     await tester.tap(find.text('Bulbasaur'));
     await tester.pumpAndSettle();
@@ -657,6 +706,7 @@ void main() {
       MyApp(pokemonRepository: _FailingPokemonRepository()),
     );
     await tester.pumpAndSettle();
+    await _openPokedex(tester);
 
     expect(find.text('No se pudo cargar la Pokedex'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
@@ -667,10 +717,24 @@ Finder _filterChip(String label) {
   return find.ancestor(of: find.text(label), matching: find.byType(FilterChip));
 }
 
+Future<void> _openPokedex(WidgetTester tester) async {
+  await tester.tap(find.text('Pokedex'));
+  await tester.pumpAndSettle();
+}
+
 Finder _filterScrollView() {
   return find
       .descendant(
         of: find.byKey(const ValueKey('filterScrollView')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+}
+
+Finder _drawerScrollView() {
+  return find
+      .descendant(
+        of: find.byType(NavigationDrawer),
         matching: find.byType(Scrollable),
       )
       .first;
@@ -780,6 +844,7 @@ class _FakePokemonRepository implements PokemonRepository {
         height: '0.6 m',
         weight: '8.5 kg',
         generation: 1,
+        speciesColor: 'Rojo',
         abilities: [PokemonAbility(name: 'Mar llamas', apiName: 'blaze')],
         stats: [
           PokemonStat(name: 'HP', value: 39),
@@ -814,6 +879,7 @@ class _FakePokemonRepository implements PokemonRepository {
         isLegendary: true,
         evolvesByItem: true,
         generation: 1,
+        speciesColor: 'Amarillo',
         evolutionStage: PokemonEvolutionStage.middle,
         stats: [
           PokemonStat(name: 'HP', value: 35),
@@ -849,6 +915,7 @@ class _FakePokemonRepository implements PokemonRepository {
         height: '0.7 m',
         weight: '6.9 kg',
         generation: 1,
+        speciesColor: 'Verde',
         abilities: [PokemonAbility(name: 'Espesura', apiName: 'overgrow')],
         stats: [
           PokemonStat(name: 'HP', value: 45),

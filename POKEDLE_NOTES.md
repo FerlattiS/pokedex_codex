@@ -28,6 +28,8 @@ Comparaciones del MVP:
 - Generacion.
 - Etapa evolutiva.
 - Rareza: normal, legendario o mitico.
+- Color de especie.
+- Forma: normal, regional, mega, Gigamax u otras variantes reconocidas.
 - Altura.
 - Peso.
 - Stat mas alto.
@@ -39,20 +41,21 @@ Ya implementado:
 - Historial local de resultados por fecha, alcance y dificultad.
 - Perfil general con pestana Pokedle, partidas, victorias, racha actual,
   mejor racha, ratio de victoria y promedio de intentos ganados.
+- Comparacion por color.
+- Comparacion por forma.
 
 Pendientes para este modo:
 
-- Agregar color de especie.
-- Agregar formas regionales, megaevoluciones, Gigamax y variantes especiales.
+- Refinar deteccion de formas especiales menos comunes.
 - Mejorar altura y peso con pistas visuales mas claras.
 - Mostrar historial de intentos por dia.
 - Separar estadisticas por modo y dificultad.
 - Sincronizar progreso con Supabase cuando exista login.
 - Agregar animacion o estado especial al ganar.
 
-## Idea pendiente: mayor battle stats total
+## Higher or Lower: mayor battle stats total
 
-Minijuego futuro:
+Minijuego inicial implementado:
 
 - Se muestran 2 Pokemon.
 - El usuario debe adivinar cual tiene mas battle stats totales.
@@ -60,4 +63,8 @@ Minijuego futuro:
 - El perfil deberia registrar maxima racha, racha actual, partidas jugadas y
   mejor marca diaria.
 
-No implementar todavia; queda registrado para retomarlo mas adelante.
+Pendiente:
+
+- Persistir racha y partidas en perfil.
+- Agregar dificultad o filtros por generacion.
+- Mostrar desglose de stats al revelar resultado.

@@ -18,6 +18,8 @@ class PokemonPreview {
     this.isMythical = false,
     this.evolvesByItem = false,
     this.generation,
+    this.speciesColor,
+    this.formLabel = 'Normal',
     this.evolutionStage = PokemonEvolutionStage.unknown,
     this.evolutionLine = const [],
   });
@@ -40,6 +42,8 @@ class PokemonPreview {
   final bool isMythical;
   final bool evolvesByItem;
   final int? generation;
+  final String? speciesColor;
+  final String formLabel;
   final PokemonEvolutionStage evolutionStage;
   final List<PokemonEvolutionStep> evolutionLine;
 
@@ -62,6 +66,8 @@ class PokemonPreview {
     bool? isMythical,
     bool? evolvesByItem,
     int? generation,
+    String? speciesColor,
+    String? formLabel,
     PokemonEvolutionStage? evolutionStage,
     List<PokemonEvolutionStep>? evolutionLine,
   }) {
@@ -84,6 +90,8 @@ class PokemonPreview {
       isMythical: isMythical ?? this.isMythical,
       evolvesByItem: evolvesByItem ?? this.evolvesByItem,
       generation: generation ?? this.generation,
+      speciesColor: speciesColor ?? this.speciesColor,
+      formLabel: formLabel ?? this.formLabel,
       evolutionStage: evolutionStage ?? this.evolutionStage,
       evolutionLine: evolutionLine ?? this.evolutionLine,
     );
@@ -109,6 +117,8 @@ class PokemonPreview {
       'isMythical': isMythical,
       'evolvesByItem': evolvesByItem,
       'generation': generation,
+      'speciesColor': speciesColor,
+      'formLabel': formLabel,
       'evolutionStage': evolutionStage.name,
       'evolutionLine': evolutionLine.map((step) => step.toJson()).toList(),
     };
@@ -145,6 +155,8 @@ class PokemonPreview {
       isMythical: json['isMythical'] as bool? ?? false,
       evolvesByItem: json['evolvesByItem'] as bool? ?? false,
       generation: json['generation'] as int?,
+      speciesColor: json['speciesColor'] as String?,
+      formLabel: json['formLabel'] as String? ?? 'Normal',
       evolutionStage: PokemonEvolutionStage.fromName(
         json['evolutionStage'] as String?,
       ),

@@ -62,6 +62,9 @@ void main() {
         if (request.url.path.contains('/pokemon-species/1')) {
           return http.Response('''
             {
+              "color": {
+                "name": "green"
+              },
               "flavor_text_entries": [
                 {
                   "flavor_text": "Una rara semilla fue plantada en su lomo al nacer.",
@@ -165,6 +168,8 @@ void main() {
       'https://example.com/bulbasaur-back-shiny.png',
     );
     expect(pokemon.generation, 1);
+    expect(pokemon.speciesColor, 'Verde');
+    expect(pokemon.formLabel, 'Normal');
     expect(pokemon.abilities.first.name, 'Overgrow');
     expect(pokemon.abilities.first.apiName, 'overgrow');
     expect(pokemon.moves.first.name, 'Tackle');
@@ -233,6 +238,9 @@ void main() {
               "generation": {
                 "name": "generation-i"
               },
+              "color": {
+                "name": "brown"
+              },
               "flavor_text_entries": [
                 {
                   "flavor_text": "Forma un trio bajo tierra.",
@@ -282,6 +290,8 @@ void main() {
 
     expect(pokemon.name, 'Dugtrio Alola');
     expect(pokemon.generation, 7);
+    expect(pokemon.speciesColor, 'Marron');
+    expect(pokemon.formLabel, 'Alola');
     expect(pokemon.evolutionStage, PokemonEvolutionStage.finalStage);
     expect(pokemon.evolutionLine.map((step) => step.name), [
       'Diglett',
@@ -301,6 +311,9 @@ void main() {
               "is_mythical": false,
               "generation": {
                 "name": "generation-i"
+              },
+              "color": {
+                "name": "yellow"
               },
               "evolution_chain": {
                 "url": "https://pokeapi.co/api/v2/evolution-chain/10/"
@@ -361,6 +374,7 @@ void main() {
 
     expect(metadata.name, 'Pikachu');
     expect(metadata.generation, 1);
+    expect(metadata.speciesColor, 'Amarillo');
     expect(metadata.isLegendary, isTrue);
     expect(metadata.isMythical, isFalse);
     expect(metadata.evolvesByItem, isTrue);

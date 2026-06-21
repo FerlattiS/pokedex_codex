@@ -161,6 +161,8 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final cachedDetail = _detailCache[id];
     if (cachedDetail != null &&
         cachedDetail.generation != null &&
+        cachedDetail.speciesColor != null &&
+        cachedDetail.formLabel.isNotEmpty &&
         cachedDetail.evolutionLine.isNotEmpty) {
       return cachedDetail;
     }
@@ -199,7 +201,10 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
   Future<PokemonPreview> _readOrFetchPokemonDetail(int id) async {
     final storedDetail = await cacheStore?.readDetail(id);
-    if (storedDetail != null && storedDetail.generation != null) {
+    if (storedDetail != null &&
+        storedDetail.generation != null &&
+        storedDetail.speciesColor != null &&
+        storedDetail.formLabel.isNotEmpty) {
       _detailCache[id] = storedDetail;
 
       return storedDetail;
@@ -257,6 +262,8 @@ class PokeApiPokemonRepository implements PokemonRepository {
       isMythical: metadata.isMythical,
       evolvesByItem: metadata.evolvesByItem,
       generation: metadata.generation,
+      speciesColor: metadata.speciesColor,
+      formLabel: metadata.formLabel,
       evolutionStage: metadata.evolutionStage,
       evolutionLine: metadata.evolutionLine,
     );
@@ -528,6 +535,8 @@ class PokeApiPokemonRepository implements PokemonRepository {
       isMythical: speciesData['is_mythical'] as bool? ?? false,
       evolvesByItem: evolvesByItem,
       generation: _readGeneration(speciesData, pokemonApiName, pokemonId),
+      speciesColor: _readSpeciesColor(speciesData),
+      formLabel: _readFormLabel(pokemonApiName),
       evolutionStage: evolutionStage,
       evolutionLine: evolutionLine,
     );
@@ -852,6 +861,61 @@ class PokeApiPokemonRepository implements PokemonRepository {
     return _readGenerationFromFormName(pokemonApiName) ??
         _readGenerationFromNamedResource(speciesData['generation']) ??
         _readGenerationFromPokemonId(pokemonId);
+  }
+
+  String? _readSpeciesColor(Map<String, dynamic> speciesData) {
+    final color = speciesData['color'] as Map<String, dynamic>?;
+    final colorName = color?['name'] as String?;
+    if (colorName == null) {
+      return null;
+    }
+
+    return switch (colorName) {
+      'black' => 'Negro',
+      'blue' => 'Azul',
+      'brown' => 'Marron',
+      'gray' => 'Gris',
+      'green' => 'Verde',
+      'pink' => 'Rosa',
+      'purple' => 'Violeta',
+      'red' => 'Rojo',
+      'white' => 'Blanco',
+      'yellow' => 'Amarillo',
+      _ => _formatName(colorName),
+    };
+  }
+
+  String _readFormLabel(String? pokemonApiName) {
+    final name = pokemonApiName?.toLowerCase();
+    if (name == null) {
+      return 'Normal';
+    }
+
+    if (name.contains('-mega-x')) return 'Mega X';
+    if (name.contains('-mega-y')) return 'Mega Y';
+    if (name.contains('-mega')) return 'Mega';
+    if (name.contains('-gmax')) return 'Gmax';
+    if (name.contains('-alola')) return 'Alola';
+    if (name.contains('-galar')) return 'Galar';
+    if (name.contains('-hisui')) return 'Hisui';
+    if (name.contains('-paldea')) return 'Paldea';
+    if (name.contains('-totem')) return 'Totem';
+    if (name.contains('-primal')) return 'Primal';
+    if (name.contains('-origin')) return 'Origen';
+    if (name.contains('-therian')) return 'Therian';
+    if (name.contains('-incarnate')) return 'Encarnada';
+    if (name.contains('-altered')) return 'Alterada';
+    if (name.contains('-sky')) return 'Cielo';
+    if (name.contains('-blade')) return 'Filo';
+    if (name.contains('-shield')) return 'Escudo';
+    if (name.contains('-school')) return 'Banco';
+    if (name.contains('-solo')) return 'Solo';
+    if (name.contains('-complete')) return 'Completa';
+    if (name.contains('-10')) return '10%';
+    if (name.contains('-50')) return '50%';
+    if (name.contains('-bloodmoon')) return 'Luna Carmesi';
+
+    return 'Normal';
   }
 
   int? _readGenerationFromFormName(String? pokemonApiName) {

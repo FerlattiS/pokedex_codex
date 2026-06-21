@@ -574,6 +574,8 @@ class _GuessCard extends StatelessWidget {
         (value) => '${value.toInt()}',
       ),
       _compareText('Rareza', _rarity(guess), _rarity(target)),
+      _compareText('Color', _color(guess), _color(target)),
+      _compareText('Forma', guess.formLabel, target.formLabel),
       _compareNumber(
         'Altura',
         _metricValue(guess.height),
@@ -660,6 +662,10 @@ class _GuessCard extends StatelessWidget {
     }
 
     return 'Normal';
+  }
+
+  String _color(PokemonPreview pokemon) {
+    return pokemon.speciesColor ?? '-';
   }
 
   double? _metricValue(String value) {

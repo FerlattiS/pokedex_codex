@@ -19,12 +19,14 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Colores por tipo en chips, bordes y tarjetas.
 - Borde visible por tipo real en tarjetas de lista y cuadricula.
 - Insignias L/M en tarjetas para Pokemon legendarios y miticos.
-- Menu principal con Pokedex, About us, Help, Settings, Daily Randommon, POKEDLE PRO y Quit.
+- Menu inicial para elegir Pokedex, minijuegos, perfil o favoritos.
+- Menu lateral con Pokedex, favoritos, perfil, About us, Help, Settings, Daily Randommon, POKEDLE PRO, Higher or Lower y Quit.
 - Modo claro y modo oscuro.
 - Persistencia local del modo claro y modo oscuro.
 - Pantalla real de Settings con preferencias y estado de datos locales.
 - Daily Randommon funcional.
-- POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, modos Gen 1-2/Todos y dificultad facil/dificil.
+- POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, color, forma, modos Gen 1-2/Todos y dificultad facil/dificil.
+- Higher or Lower inicial para elegir cual de 2 Pokemon tiene mayor battle stats total y mantener racha.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
