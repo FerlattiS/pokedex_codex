@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
+import '../services/pokemon_questions_progress_repository.dart';
 import '../services/pokemon_repository.dart';
 
 class PokemonQuestionsPage extends StatefulWidget {
   const PokemonQuestionsPage({
     super.key,
     required this.pokemonRepository,
+    required this.progressRepository,
     this.date,
   });
 
   final PokemonRepository pokemonRepository;
+  final PokemonQuestionsProgressRepository progressRepository;
   final DateTime? date;
 
   @override
@@ -23,6 +26,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
 
   late final DateTime _date = widget.date ?? DateTime.now();
   late final String _dateKey = _formatDateKey(_date);
+  late final String _sessionKey = _dateKey;
   late Future<void> _loadFuture = _loadGame();
   final TextEditingController _guessController = TextEditingController();
   List<PokemonPreview> _catalog = [];
@@ -57,6 +61,29 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     final target = await widget.pokemonRepository.fetchPokemonDetail(
       targetPreview.id,
     );
+    final savedState = await widget.progressRepository.readState(_sessionKey);
+    final questionById = {
+      for (final question in _buildQuestions()) question.id: question,
+    };
+    final askedQuestions = <_AskedQuestion>[];
+    final guesses = <PokemonPreview>[];
+
+    for (final questionId in savedState?.askedQuestionIds ?? <String>[]) {
+      final question = questionById[questionId];
+      if (question != null) {
+        askedQuestions.add(
+          _AskedQuestion(question: question, answer: question.answer(target)),
+        );
+      }
+    }
+
+    for (final id in savedState?.guessIds ?? <int>[]) {
+      try {
+        guesses.add(await widget.pokemonRepository.fetchPokemonDetail(id));
+      } catch (_) {
+        // Ignore stale guesses that cannot be loaded anymore.
+      }
+    }
 
     if (!mounted) {
       return;
@@ -65,11 +92,14 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     setState(() {
       _catalog = catalog;
       _target = target;
-      _selectedQuestionId = _availableQuestions().firstOrNull?.id;
+      _askedQuestions = askedQuestions;
+      _guesses = guesses;
+      _hasWon = guesses.any((guess) => guess.id == target.id);
+      _selectedQuestionId = _availableQuestions(askedQuestions).firstOrNull?.id;
     });
   }
 
-  void _askQuestion() {
+  Future<void> _askQuestion() async {
     final target = _target;
     final question = _selectedQuestion;
     if (target == null ||
@@ -88,9 +118,11 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       _askedQuestions = nextAsked;
       _selectedQuestionId = _availableQuestions(nextAsked).firstOrNull?.id;
     });
+
+    await _persistState(askedQuestions: nextAsked);
   }
 
-  void _submitGuess() {
+  Future<void> _submitGuess() async {
     final selectedPokemon = _selectedPokemon;
     final target = _target;
     if (selectedPokemon == null || target == null || _isGameOver) {
@@ -105,12 +137,32 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       return;
     }
 
+    final nextGuesses = [selectedPokemon, ..._guesses];
+    final hasWon = selectedPokemon.id == target.id;
+
     setState(() {
-      _guesses = [selectedPokemon, ..._guesses];
-      _hasWon = selectedPokemon.id == target.id;
+      _guesses = nextGuesses;
+      _hasWon = hasWon;
       _selectedPokemon = null;
       _guessController.clear();
     });
+
+    await _persistState(guesses: nextGuesses);
+  }
+
+  Future<void> _persistState({
+    List<_AskedQuestion>? askedQuestions,
+    List<PokemonPreview>? guesses,
+  }) async {
+    await widget.progressRepository.writeState(
+      PokemonQuestionsGameState(
+        sessionKey: _sessionKey,
+        askedQuestionIds: (askedQuestions ?? _askedQuestions)
+            .map((question) => question.question.id)
+            .toList(),
+        guessIds: (guesses ?? _guesses).map((pokemon) => pokemon.id).toList(),
+      ),
+    );
   }
 
   @override
@@ -190,12 +242,17 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: selectedQuestion?.id,
               items: [
                 for (final question in questions)
                   DropdownMenuItem(
                     value: question.id,
-                    child: Text(question.label),
+                    child: Text(
+                      '${question.category}: ${question.label}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
               ],
               decoration: const InputDecoration(
@@ -273,56 +330,84 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       for (var generation = 1; generation <= 9; generation++)
         _QuestionDefinition(
           id: 'generation-$generation',
+          category: 'Generacion',
           label: 'Pertenece a la generacion $generation?',
           answer: (pokemon) =>
               (pokemon.generation ?? _generationFromId(pokemon.id)) ==
               generation,
         ),
+      for (var generation = 2; generation <= 9; generation++)
+        _QuestionDefinition(
+          id: 'before-generation-$generation',
+          category: 'Generacion',
+          label: 'Salio antes de la generacion $generation?',
+          answer: (pokemon) =>
+              (pokemon.generation ?? _generationFromId(pokemon.id)) <
+              generation,
+        ),
+      for (var generation = 1; generation <= 8; generation++)
+        _QuestionDefinition(
+          id: 'after-generation-$generation',
+          category: 'Generacion',
+          label: 'Salio despues de la generacion $generation?',
+          answer: (pokemon) =>
+              (pokemon.generation ?? _generationFromId(pokemon.id)) >
+              generation,
+        ),
       for (final type in _pokemonTypes)
         _QuestionDefinition(
           id: 'type-$type',
+          category: 'Tipo',
           label: 'Es de tipo $type?',
           answer: (pokemon) => pokemon.types.contains(type),
         ),
       for (final color in _pokemonColors)
         _QuestionDefinition(
           id: 'color-$color',
+          category: 'Color',
           label: 'Su color principal es $color?',
           answer: (pokemon) => pokemon.speciesColor == color,
         ),
       _QuestionDefinition(
         id: 'dual-type',
+        category: 'Tipos',
         label: 'Tiene doble tipo?',
         answer: (pokemon) => pokemon.types.length >= 2,
       ),
       _QuestionDefinition(
         id: 'mono-type',
+        category: 'Tipos',
         label: 'Es monotipo?',
         answer: (pokemon) => pokemon.types.length == 1,
       ),
       _QuestionDefinition(
         id: 'legendary',
+        category: 'Rareza',
         label: 'Es legendario?',
         answer: (pokemon) => pokemon.isLegendary,
       ),
       _QuestionDefinition(
         id: 'mythical',
+        category: 'Rareza',
         label: 'Es mitico?',
         answer: (pokemon) => pokemon.isMythical,
       ),
       _QuestionDefinition(
         id: 'item-evolution',
+        category: 'Evolucion',
         label: 'Evoluciona por objeto?',
         answer: (pokemon) => pokemon.evolvesByItem,
       ),
       _QuestionDefinition(
         id: 'alternative-form',
+        category: 'Forma',
         label: 'Es una forma alternativa?',
         answer: (pokemon) => pokemon.formLabel != 'Normal',
       ),
       for (var stage = 1; stage <= 3; stage++)
         _QuestionDefinition(
           id: 'stage-$stage',
+          category: 'Evolucion',
           label: 'Es etapa evolutiva $stage?',
           answer: (pokemon) => _stageNumber(pokemon) == stage,
         ),
@@ -518,6 +603,7 @@ class _AskedQuestionsList extends StatelessWidget {
             ListTile(
               dense: true,
               title: Text(question.question.label),
+              subtitle: Text(question.question.category),
               trailing: Text(
                 question.answer ? 'Si' : 'No',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -572,11 +658,13 @@ class _GuessList extends StatelessWidget {
 class _QuestionDefinition {
   const _QuestionDefinition({
     required this.id,
+    required this.category,
     required this.label,
     required this.answer,
   });
 
   final String id;
+  final String category;
   final String label;
   final bool Function(PokemonPreview pokemon) answer;
 }

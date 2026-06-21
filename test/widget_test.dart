@@ -6,6 +6,7 @@ import 'package:pokedex_codex/models/pokemon_preview.dart';
 import 'package:pokedex_codex/models/user_pokemon_data.dart';
 import 'package:pokedex_codex/screens/pokedle_page.dart';
 import 'package:pokedex_codex/services/pokedle_progress_repository.dart';
+import 'package:pokedex_codex/services/pokemon_questions_progress_repository.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
 import 'package:pokedex_codex/services/user_data_repository.dart';
 
@@ -553,7 +554,15 @@ void main() {
   testWidgets('Opens 15 Preguntas from the main menu', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    final questionsProgressRepository =
+        MemoryPokemonQuestionsProgressRepository();
+
+    await tester.pumpWidget(
+      MyApp(
+        pokemonRepository: pokemonRepository,
+        pokemonQuestionsProgressRepository: questionsProgressRepository,
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('15 Preguntas'));
@@ -571,6 +580,26 @@ void main() {
       find.byKey(const ValueKey('pokemonQuestionsGuessField')),
       findsOneWidget,
     );
+
+    await tester.tap(find.text('Preguntar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preguntas: 14/15'), findsOneWidget);
+    expect(find.text('Preguntas realizadas'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationDrawer),
+        matching: find.text('Menu'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15 Preguntas'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preguntas: 14/15'), findsOneWidget);
   });
 
   testWidgets('Plays Pokedle guesses for the daily Pokemon', (

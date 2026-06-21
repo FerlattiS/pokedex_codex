@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/pokemon_repository.dart';
 import '../services/pokedle_progress_repository.dart';
+import '../services/pokemon_questions_progress_repository.dart';
 import '../services/user_data_repository.dart';
 import 'about_us_page.dart';
 import 'daily_randommon_page.dart';
@@ -36,6 +37,7 @@ class AppShell extends StatefulWidget {
     required this.pokemonRepository,
     required this.userDataRepository,
     required this.pokedleProgressRepository,
+    required this.pokemonQuestionsProgressRepository,
     required this.isDarkMode,
     required this.onDarkModeChanged,
     required this.isSupabaseConfigured,
@@ -44,6 +46,7 @@ class AppShell extends StatefulWidget {
   final PokemonRepository pokemonRepository;
   final UserDataRepository userDataRepository;
   final PokedleProgressRepository pokedleProgressRepository;
+  final PokemonQuestionsProgressRepository pokemonQuestionsProgressRepository;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
   final bool isSupabaseConfigured;
@@ -115,6 +118,7 @@ class _AppShellState extends State<AppShell> {
         ),
         MainMenuDestination.pokemonQuestions => PokemonQuestionsPage(
           pokemonRepository: widget.pokemonRepository,
+          progressRepository: widget.pokemonQuestionsProgressRepository,
         ),
         MainMenuDestination.quit => const PlaceholderPage(
           title: 'Quit',

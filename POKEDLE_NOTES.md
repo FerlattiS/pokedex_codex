@@ -98,12 +98,17 @@ Minijuego diario implementado:
 - Se selecciona un Pokemon de forma deterministica por fecha.
 - El usuario puede hacer hasta 15 preguntas de si/no.
 - Tiene 3 intentos para adivinar el Pokemon correcto.
-- Las preguntas iniciales cubren generacion, tipo, color, rareza, composicion de
-  tipos, forma alternativa, evolucion por objeto y etapa evolutiva.
+- El estado diario queda guardado localmente para que no se reinicie al salir al
+  menu y volver.
+- Las preguntas estan categorizadas por generacion, tipo, color, rareza,
+  composicion de tipos, forma alternativa, evolucion por objeto y etapa
+  evolutiva.
+- Generacion incluye preguntas exactas y rangos, por ejemplo si salio antes o
+  despues de determinada generacion.
 
 Pendientes:
 
-- Persistir resultado diario, preguntas hechas e intentos.
+- Persistir resultado diario como estadistica historica.
 - Agregar estadisticas al perfil cuando exista el perfil de juegos.
 - Mejorar el set de preguntas con altura, peso, habilidades, habitat o region.
 - Separar preguntas por categorias para que la interfaz escale mejor.

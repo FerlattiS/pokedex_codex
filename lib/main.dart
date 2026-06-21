@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/app_shell.dart';
 import 'services/app_settings_repository.dart';
 import 'services/pokedle_progress_repository.dart';
+import 'services/pokemon_questions_progress_repository.dart';
 import 'services/pokemon_cache_store.dart';
 import 'services/pokemon_repository.dart';
 import 'services/supabase_service.dart';
@@ -28,6 +29,8 @@ Future<void> main() async {
       ),
       userDataRepository: LocalUserDataRepository(preferences),
       pokedleProgressRepository: LocalPokedleProgressRepository(preferences),
+      pokemonQuestionsProgressRepository:
+          LocalPokemonQuestionsProgressRepository(preferences),
       appSettingsRepository: appSettingsRepository,
       initialThemeMode: themeMode,
       isSupabaseConfigured: supabaseClient != null,
@@ -41,6 +44,7 @@ class MyApp extends StatefulWidget {
     this.pokemonRepository,
     this.userDataRepository,
     this.pokedleProgressRepository,
+    this.pokemonQuestionsProgressRepository,
     this.appSettingsRepository,
     this.initialThemeMode = ThemeMode.light,
     this.isSupabaseConfigured = false,
@@ -49,6 +53,7 @@ class MyApp extends StatefulWidget {
   final PokemonRepository? pokemonRepository;
   final UserDataRepository? userDataRepository;
   final PokedleProgressRepository? pokedleProgressRepository;
+  final PokemonQuestionsProgressRepository? pokemonQuestionsProgressRepository;
   final AppSettingsRepository? appSettingsRepository;
   final ThemeMode initialThemeMode;
   final bool isSupabaseConfigured;
@@ -98,6 +103,9 @@ class _MyAppState extends State<MyApp> {
         pokedleProgressRepository:
             widget.pokedleProgressRepository ??
             MemoryPokedleProgressRepository(),
+        pokemonQuestionsProgressRepository:
+            widget.pokemonQuestionsProgressRepository ??
+            MemoryPokemonQuestionsProgressRepository(),
         isDarkMode: _themeMode == ThemeMode.dark,
         onDarkModeChanged: _setDarkMode,
         isSupabaseConfigured: widget.isSupabaseConfigured,
