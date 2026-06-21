@@ -98,6 +98,7 @@ class _PokedlePageState extends State<PokedlePage> {
         selectedPokemon.id,
       );
       final nextGuesses = [..._guesses, detail];
+      final wonWithGuess = detail.id == _target?.id;
       await widget.progressRepository.writeGuessIds(
         _dateKey,
         nextGuesses.map((pokemon) => pokemon.id).toList(),
@@ -113,6 +114,10 @@ class _PokedlePageState extends State<PokedlePage> {
         _guessController.clear();
         _isSubmitting = false;
       });
+
+      if (wonWithGuess) {
+        await _showWinDialog(detail);
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -122,6 +127,25 @@ class _PokedlePageState extends State<PokedlePage> {
         _isSubmitting = false;
       });
     }
+  }
+
+  Future<void> _showWinDialog(PokemonPreview pokemon) async {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(Icons.emoji_events_outlined),
+          title: const Text('Ganaste POKEDLE PRO'),
+          content: Text('Adivinaste el Pokemon diario: ${pokemon.name}.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   bool get _hasWon {

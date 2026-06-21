@@ -515,6 +515,14 @@ void main() {
     await tester.tap(find.text('Probar'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Ganaste POKEDLE PRO'), findsOneWidget);
+    expect(
+      find.text('Adivinaste el Pokemon diario: Bulbasaur.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cerrar'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Correcto: Bulbasaur'), findsOneWidget);
     expect(await progressRepository.readGuessIds('2026-06-22'), [4, 1]);
   });
@@ -549,6 +557,12 @@ void main() {
       find.text('Una semilla crece en su lomo desde que nace.'),
       findsOneWidget,
     );
+    expect(find.text('Frente'), findsOneWidget);
+    expect(find.text('Espalda'), findsOneWidget);
+    expect(find.text('Normal'), findsOneWidget);
+    expect(find.text('Shiny'), findsOneWidget);
+    await tester.tap(find.text('Shiny'));
+    await tester.pumpAndSettle();
     expect(find.text('Altura'), findsOneWidget);
     expect(find.text('Peso'), findsOneWidget);
     expect(find.text('Linea evolutiva'), findsOneWidget);
@@ -792,7 +806,7 @@ class _FakePokemonRepository implements PokemonRepository {
           PokemonEvolutionStep(
             id: 26,
             name: 'Raichu',
-            method: 'Usar Thunder stone',
+            method: 'Usar Thunder Stone',
           ),
         ],
       ),

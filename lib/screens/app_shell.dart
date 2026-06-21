@@ -53,7 +53,12 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: Text(_destination.title)),
+      appBar: AppBar(
+        centerTitle: true,
+        title: _destination == MainMenuDestination.pokedlePro
+            ? const _PokedleAppBarTitle()
+            : Text(_destination.title),
+      ),
       drawer: _MainMenuDrawer(
         selectedDestination: _destination,
         isDarkMode: widget.isDarkMode,
@@ -97,6 +102,35 @@ class _AppShellState extends State<AppShell> {
           message: 'Salida de la app disponible mas adelante.',
         ),
       },
+    );
+  }
+}
+
+class _PokedleAppBarTitle extends StatelessWidget {
+  const _PokedleAppBarTitle();
+
+  static const _megaLopunnySpriteUrl =
+      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10088.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.catching_pokemon, size: 22),
+        const SizedBox(width: 8),
+        const Text('POKEDLE PRO'),
+        const SizedBox(width: 8),
+        Image.network(
+          _megaLopunnySpriteUrl,
+          width: 34,
+          height: 34,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.auto_awesome, size: 22);
+          },
+        ),
+      ],
     );
   }
 }

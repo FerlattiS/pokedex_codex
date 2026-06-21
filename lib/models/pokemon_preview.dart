@@ -7,6 +7,10 @@ class PokemonPreview {
     this.height = '-',
     this.weight = '-',
     this.imageUrl,
+    this.frontSpriteUrl,
+    this.backSpriteUrl,
+    this.frontShinySpriteUrl,
+    this.backShinySpriteUrl,
     this.abilities = const [],
     this.stats = const [],
     this.moves = const [],
@@ -25,6 +29,10 @@ class PokemonPreview {
   final String height;
   final String weight;
   final String? imageUrl;
+  final String? frontSpriteUrl;
+  final String? backSpriteUrl;
+  final String? frontShinySpriteUrl;
+  final String? backShinySpriteUrl;
   final List<PokemonAbility> abilities;
   final List<PokemonStat> stats;
   final List<PokemonMoveSummary> moves;
@@ -43,6 +51,10 @@ class PokemonPreview {
     String? height,
     String? weight,
     String? imageUrl,
+    String? frontSpriteUrl,
+    String? backSpriteUrl,
+    String? frontShinySpriteUrl,
+    String? backShinySpriteUrl,
     List<PokemonAbility>? abilities,
     List<PokemonStat>? stats,
     List<PokemonMoveSummary>? moves,
@@ -61,6 +73,10 @@ class PokemonPreview {
       height: height ?? this.height,
       weight: weight ?? this.weight,
       imageUrl: imageUrl ?? this.imageUrl,
+      frontSpriteUrl: frontSpriteUrl ?? this.frontSpriteUrl,
+      backSpriteUrl: backSpriteUrl ?? this.backSpriteUrl,
+      frontShinySpriteUrl: frontShinySpriteUrl ?? this.frontShinySpriteUrl,
+      backShinySpriteUrl: backShinySpriteUrl ?? this.backShinySpriteUrl,
       abilities: abilities ?? this.abilities,
       stats: stats ?? this.stats,
       moves: moves ?? this.moves,
@@ -82,6 +98,10 @@ class PokemonPreview {
       'height': height,
       'weight': weight,
       'imageUrl': imageUrl,
+      'frontSpriteUrl': frontSpriteUrl,
+      'backSpriteUrl': backSpriteUrl,
+      'frontShinySpriteUrl': frontShinySpriteUrl,
+      'backShinySpriteUrl': backShinySpriteUrl,
       'abilities': abilities.map((ability) => ability.toJson()).toList(),
       'stats': stats.map((stat) => stat.toJson()).toList(),
       'moves': moves.map((move) => move.toJson()).toList(),
@@ -105,6 +125,10 @@ class PokemonPreview {
       height: json['height'] as String? ?? '-',
       weight: json['weight'] as String? ?? '-',
       imageUrl: json['imageUrl'] as String?,
+      frontSpriteUrl: json['frontSpriteUrl'] as String?,
+      backSpriteUrl: json['backSpriteUrl'] as String?,
+      frontShinySpriteUrl: json['frontShinySpriteUrl'] as String?,
+      backShinySpriteUrl: json['backShinySpriteUrl'] as String?,
       abilities: (json['abilities'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>()
           .map(PokemonAbility.fromJson)

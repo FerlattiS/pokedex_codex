@@ -126,7 +126,7 @@ class _PokemonDetailContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _PokemonDetailAvatar(pokemon: pokemon),
+        _PokemonSpriteShowcase(pokemon: pokemon),
         const SizedBox(height: 16),
         Text(
           pokemon.name,
@@ -597,26 +597,101 @@ class _StatRow extends StatelessWidget {
   }
 }
 
-class _PokemonDetailAvatar extends StatelessWidget {
-  const _PokemonDetailAvatar({required this.pokemon});
+class _PokemonSpriteShowcase extends StatefulWidget {
+  const _PokemonSpriteShowcase({required this.pokemon});
 
   final PokemonPreview pokemon;
 
   @override
+  State<_PokemonSpriteShowcase> createState() => _PokemonSpriteShowcaseState();
+}
+
+class _PokemonSpriteShowcaseState extends State<_PokemonSpriteShowcase> {
+  var _isShiny = false;
+
+  @override
   Widget build(BuildContext context) {
-    final imageUrl = pokemon.imageUrl;
+    final pokemon = widget.pokemon;
+    final frontImageUrl = _isShiny
+        ? pokemon.frontShinySpriteUrl ??
+              pokemon.frontSpriteUrl ??
+              pokemon.imageUrl
+        : pokemon.frontSpriteUrl ?? pokemon.imageUrl;
+    final backImageUrl = _isShiny
+        ? pokemon.backShinySpriteUrl ?? pokemon.backSpriteUrl
+        : pokemon.backSpriteUrl;
 
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: 44,
-        child: Text(
-          '#${pokemon.id.toString().padLeft(3, '0')}',
-          style: Theme.of(context).textTheme.titleLarge,
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _SpriteSlot(label: 'Frente', imageUrl: frontImageUrl),
+            const SizedBox(width: 16),
+            _SpriteSlot(label: 'Espalda', imageUrl: backImageUrl),
+          ],
         ),
-      );
-    }
+        const SizedBox(height: 12),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.catching_pokemon),
+              label: Text('Normal'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.auto_awesome),
+              label: Text('Shiny'),
+            ),
+          ],
+          selected: {_isShiny},
+          onSelectionChanged: (selection) {
+            setState(() {
+              _isShiny = selection.first;
+            });
+          },
+        ),
+      ],
+    );
+  }
+}
 
-    return Image.network(imageUrl, height: 160, fit: BoxFit.contain);
+class _SpriteSlot extends StatelessWidget {
+  const _SpriteSlot({required this.label, required this.imageUrl});
+
+  final String label;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 132,
+      child: Column(
+        children: [
+          Container(
+            height: 132,
+            width: 132,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: imageUrl == null
+                ? const Icon(Icons.catching_pokemon, size: 42)
+                : Image.network(
+                    imageUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.catching_pokemon, size: 42);
+                    },
+                  ),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ],
+      ),
+    );
   }
 }
 

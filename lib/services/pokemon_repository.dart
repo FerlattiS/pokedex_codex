@@ -249,6 +249,10 @@ class PokeApiPokemonRepository implements PokemonRepository {
       imageUrl:
           officialArtwork?['front_default'] as String? ??
           sprites['front_default'] as String?,
+      frontSpriteUrl: sprites['front_default'] as String?,
+      backSpriteUrl: sprites['back_default'] as String?,
+      frontShinySpriteUrl: sprites['front_shiny'] as String?,
+      backShinySpriteUrl: sprites['back_shiny'] as String?,
       isLegendary: metadata.isLegendary,
       isMythical: metadata.isMythical,
       evolvesByItem: metadata.evolvesByItem,
@@ -918,7 +922,11 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return value;
     }
 
-    return value[0].toUpperCase() + value.substring(1);
+    return value
+        .split(RegExp(r'[-\s]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
   }
 
   String _formatLearnMethod(String value) {

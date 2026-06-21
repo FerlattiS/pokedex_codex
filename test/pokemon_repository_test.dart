@@ -128,6 +128,9 @@ void main() {
             ],
             "sprites": {
               "front_default": "https://example.com/bulbasaur.png",
+              "back_default": "https://example.com/bulbasaur-back.png",
+              "front_shiny": "https://example.com/bulbasaur-shiny.png",
+              "back_shiny": "https://example.com/bulbasaur-back-shiny.png",
               "other": {
                 "official-artwork": {
                   "front_default": "https://example.com/art.png"
@@ -151,6 +154,16 @@ void main() {
     expect(pokemon.height, '0.7 m');
     expect(pokemon.weight, '6.9 kg');
     expect(pokemon.imageUrl, 'https://example.com/art.png');
+    expect(pokemon.frontSpriteUrl, 'https://example.com/bulbasaur.png');
+    expect(pokemon.backSpriteUrl, 'https://example.com/bulbasaur-back.png');
+    expect(
+      pokemon.frontShinySpriteUrl,
+      'https://example.com/bulbasaur-shiny.png',
+    );
+    expect(
+      pokemon.backShinySpriteUrl,
+      'https://example.com/bulbasaur-back-shiny.png',
+    );
     expect(pokemon.generation, 1);
     expect(pokemon.abilities.first.name, 'Overgrow');
     expect(pokemon.abilities.first.apiName, 'overgrow');
@@ -198,6 +211,9 @@ void main() {
               ],
               "sprites": {
                 "front_default": "https://example.com/dugtrio-alola.png",
+                "back_default": "https://example.com/dugtrio-alola-back.png",
+                "front_shiny": "https://example.com/dugtrio-alola-shiny.png",
+                "back_shiny": "https://example.com/dugtrio-alola-back-shiny.png",
                 "other": {
                   "official-artwork": {
                     "front_default": "https://example.com/dugtrio-alola-art.png"
@@ -264,7 +280,7 @@ void main() {
 
     final pokemon = await repository.fetchPokemonDetail(10106);
 
-    expect(pokemon.name, 'Dugtrio-alola');
+    expect(pokemon.name, 'Dugtrio Alola');
     expect(pokemon.generation, 7);
     expect(pokemon.evolutionStage, PokemonEvolutionStage.finalStage);
     expect(pokemon.evolutionLine.map((step) => step.name), [
@@ -354,7 +370,7 @@ void main() {
       'Pikachu',
       'Raichu',
     ]);
-    expect(metadata.evolutionLine.last.method, 'Usar Thunder stone');
+    expect(metadata.evolutionLine.last.method, 'Usar Thunder Stone');
   });
 
   test('Fetches ability detail from PokeAPI responses', () async {
