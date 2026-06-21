@@ -319,6 +319,7 @@ void main() {
     expect(find.text('Daily Randommon'), findsWidgets);
     expect(find.text('POKEDLE PRO'), findsWidgets);
     expect(find.text('Higher or Lower'), findsWidgets);
+    expect(find.text('15 Preguntas'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('Quit'),
       120,
@@ -347,7 +348,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Favoritos'));
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationDrawer),
+        matching: find.text('Favoritos'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Favoritos'), findsOneWidget);
@@ -431,7 +439,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Enfoque'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
     expect(find.text('Roadmap'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(find.text('Disclaimer'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
@@ -531,7 +544,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('BST'), findsWidgets);
+    expect(find.text('Historial'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
     expect(find.text('Siguiente'), findsOneWidget);
+  });
+
+  testWidgets('Opens 15 Preguntas from the main menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('15 Preguntas'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('15 Preguntas'), findsWidgets);
+    expect(find.text('Pokemon oculto'), findsOneWidget);
+    expect(find.text('Preguntas: 15/15'), findsOneWidget);
+    expect(find.text('Intentos: 3/3'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('pokemonQuestionsGuessField')),
+      120,
+    );
+    expect(
+      find.byKey(const ValueKey('pokemonQuestionsGuessField')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Plays Pokedle guesses for the daily Pokemon', (

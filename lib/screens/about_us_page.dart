@@ -24,6 +24,21 @@ class AboutUsPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        Text('Disclaimer', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('Proyecto fan-made y educativo'),
+            subtitle: Text(
+              'Pokedex Codex Pro no esta afiliado, respaldado ni aprobado por '
+              'Nintendo, The Pokemon Company, Game Freak o Creatures. Los '
+              'nombres, personajes y marcas de Pokemon pertenecen a sus '
+              'respectivos propietarios.',
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
         Text('Enfoque', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         const Card(

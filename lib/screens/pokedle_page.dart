@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/pokemon_preview.dart';
 import '../services/pokedle_progress_repository.dart';
@@ -218,6 +219,53 @@ class _PokedlePageState extends State<PokedlePage> {
     );
   }
 
+  Future<void> _copyShareResult() async {
+    final text = _buildShareText();
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Resultado copiado al portapapeles')),
+    );
+  }
+
+  String _buildShareText() {
+    final target = _target;
+    final maxAttempts = _settings.attemptMode.maxAttempts;
+    final attemptText = _hasWon
+        ? '${_guesses.length}/${maxAttempts ?? 'sin limite'}'
+        : _hasLost
+        ? 'X/${maxAttempts ?? 'sin limite'}'
+        : '${_guesses.length}/${maxAttempts ?? 'sin limite'}';
+    final lines = [
+      'POKEDLE PRO $_dateKey $attemptText',
+      'Modo: ${_settings.dexScope.label} - ${_settings.attemptMode.label}',
+    ];
+
+    if (target != null) {
+      for (final guess in _guesses) {
+        final results = _GuessCard(
+          guess: guess,
+          target: target,
+        )._buildResults();
+        final row = results.map(_shareSymbolForStatus).join(' ');
+        lines.add(row);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  String _shareSymbolForStatus(_PokedleResult result) {
+    return switch (result.status) {
+      _PokedleStatus.correct => 'V',
+      _PokedleStatus.partial => 'A',
+      _PokedleStatus.wrong => 'R',
+    };
+  }
+
   bool get _hasWon {
     final target = _target;
     return _result?.won == true ||
@@ -284,6 +332,16 @@ class _PokedlePageState extends State<PokedlePage> {
               guesses: _guesses.length,
               attemptMode: _settings.attemptMode,
             ),
+            if (_guesses.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _copyShareResult,
+                  icon: const Icon(Icons.ios_share),
+                  label: const Text('Copiar resultado'),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             _GuessInput(
               catalog: _catalog,

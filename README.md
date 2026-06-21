@@ -20,13 +20,15 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Borde visible por tipo real en tarjetas de lista y cuadricula.
 - Insignias L/M en tarjetas para Pokemon legendarios y miticos.
 - Menu inicial para elegir Pokedex, minijuegos, perfil o favoritos.
-- Menu lateral con Pokedex, favoritos, perfil, About us, Help, Settings, Daily Randommon, POKEDLE PRO, Higher or Lower y Quit.
+- Menu lateral con Pokedex, favoritos, perfil, About us, Help, Settings, Daily Randommon, POKEDLE PRO, Higher or Lower, 15 Preguntas y Quit.
 - Modo claro y modo oscuro.
 - Persistencia local del modo claro y modo oscuro.
 - Pantalla real de Settings con preferencias y estado de datos locales.
 - Daily Randommon funcional.
 - POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, color, forma, modos Gen 1-2/Todos y dificultad facil/dificil.
-- Higher or Lower para elegir cual Pokemon tiene mayor battle stats total, mantener racha y enfrentar al ganador contra un nuevo rival.
+- POKEDLE PRO permite copiar un resultado textual al portapapeles para compartir.
+- Higher or Lower para elegir cual Pokemon tiene mayor battle stats total, mantener racha, historial visual y rondas tipo cola.
+- 15 Preguntas como minijuego diario de preguntas si/no con 15 preguntas maximas y 3 intentos de respuesta.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
@@ -38,6 +40,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pantalla dedicada para ver Pokemon favoritos.
 - Pantalla de perfil de usuario con resumen local, estado de Supabase e historial/rachas de Pokedle.
 - Pantallas reales de About us y Help.
+- Disclaimer fan-made y educativo visible en About us.
 - Cliente Supabase opcional por variables de entorno.
 - Migracion inicial de Supabase para favoritos, notas y equipos con RLS.
 - Migracion de Supabase para perfil de usuario con RLS.

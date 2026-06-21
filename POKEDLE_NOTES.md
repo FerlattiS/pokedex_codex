@@ -43,6 +43,7 @@ Ya implementado:
   mejor racha, ratio de victoria y promedio de intentos ganados.
 - Comparacion por color.
 - Comparacion por forma.
+- Copia de resultado textual al portapapeles.
 
 Pendientes para este modo:
 
@@ -51,15 +52,36 @@ Pendientes para este modo:
 - Mostrar historial de intentos por dia.
 - Separar estadisticas por modo y dificultad.
 - Sincronizar progreso con Supabase cuando exista login.
-- Agregar animacion o estado especial al ganar.
+
+### Compartir resultado
+
+El boton "Copiar resultado" usa `Clipboard.setData`, por eso no necesita
+permisos nativos ni dependencias extra. En vez de abrir el menu de compartir del
+sistema, copia un texto que el usuario puede pegar donde quiera.
+
+Formato actual:
+
+- Encabezado con fecha, modo y cantidad de intentos.
+- Una fila por intento.
+- Cada celda se resume con una letra: `V` para verde, `A` para amarillo y `R`
+  para rojo.
+
+Mas adelante se puede reemplazar o complementar por `share_plus` si queremos
+abrir el share sheet nativo de Android/iOS/Web. Eso agregaria una dependencia y
+habria que revisar comportamiento por plataforma.
 
 ## Higher or Lower: mayor battle stats total
 
-Minijuego inicial implementado:
+Minijuego implementado:
 
 - Se muestran 2 Pokemon.
 - El usuario debe adivinar cual tiene mas battle stats totales.
 - Se muestra cuantos aciertos seguidos puede lograr.
+- Las rondas avanzan como una cola: el segundo Pokemon del duelo anterior pasa
+  a la izquierda y se enfrenta contra uno nuevo.
+- Cada Pokemon participa como maximo en 2 duelos consecutivos, para evitar que
+  un Pokemon con BST muy alto bloquee la jugabilidad durante demasiadas rondas.
+- El historial visual muestra duelos recientes, seleccion del usuario y ganador.
 - El perfil deberia registrar maxima racha, racha actual, partidas jugadas y
   mejor marca diaria.
 
@@ -68,3 +90,52 @@ Pendiente:
 - Persistir racha y partidas en perfil.
 - Agregar dificultad o filtros por generacion.
 - Mostrar desglose de stats al revelar resultado.
+
+## 15 Preguntas
+
+Minijuego diario implementado:
+
+- Se selecciona un Pokemon de forma deterministica por fecha.
+- El usuario puede hacer hasta 15 preguntas de si/no.
+- Tiene 3 intentos para adivinar el Pokemon correcto.
+- Las preguntas iniciales cubren generacion, tipo, color, rareza, composicion de
+  tipos, forma alternativa, evolucion por objeto y etapa evolutiva.
+
+Pendientes:
+
+- Persistir resultado diario, preguntas hechas e intentos.
+- Agregar estadisticas al perfil cuando exista el perfil de juegos.
+- Mejorar el set de preguntas con altura, peso, habilidades, habitat o region.
+- Separar preguntas por categorias para que la interfaz escale mejor.
+- Agregar boton de compartir resultado.
+
+## Perfil de juegos
+
+No esta implementado todavia. La idea seria convertir el perfil actual en un
+centro de progreso para todos los minijuegos, no solo Pokedle.
+
+Datos utiles por juego:
+
+- Partidas jugadas.
+- Victorias.
+- Racha actual.
+- Mejor racha.
+- Resultado del dia.
+- Historial diario.
+- Mejor marca por modo o dificultad.
+- Ultima fecha jugada.
+
+Modelo posible:
+
+- Una tabla/coleccion local y luego remota llamada `game_results`.
+- Campos comunes: `user_id`, `game_id`, `date_key`, `won`, `score`,
+  `attempts`, `streak`, `metadata`, `completed_at`.
+- `metadata` guardaria detalles propios de cada juego, por ejemplo preguntas de
+  15 Preguntas o filas de Pokedle.
+
+Ventajas:
+
+- Evita crear una tabla distinta por cada minijuego.
+- Permite mostrar estadisticas comparables entre juegos.
+- Facilita sincronizar con Supabase cuando haya login.
+- Permite sumar rankings o logros mas adelante sin reescribir todo el perfil.

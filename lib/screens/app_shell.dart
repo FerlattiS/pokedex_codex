@@ -10,6 +10,7 @@ import 'help_page.dart';
 import 'higher_or_lower_page.dart';
 import 'pokedex_home_page.dart';
 import 'pokedle_page.dart';
+import 'pokemon_questions_page.dart';
 import 'placeholder_page.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
@@ -25,6 +26,7 @@ enum MainMenuDestination {
   dailyRandommon,
   pokedlePro,
   higherOrLower,
+  pokemonQuestions,
   quit,
 }
 
@@ -111,6 +113,9 @@ class _AppShellState extends State<AppShell> {
         MainMenuDestination.higherOrLower => HigherOrLowerPage(
           pokemonRepository: widget.pokemonRepository,
         ),
+        MainMenuDestination.pokemonQuestions => PokemonQuestionsPage(
+          pokemonRepository: widget.pokemonRepository,
+        ),
         MainMenuDestination.quit => const PlaceholderPage(
           title: 'Quit',
           message: 'Salida de la app disponible mas adelante.',
@@ -154,6 +159,15 @@ class _MainMenuHomePage extends StatelessWidget {
             'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png',
         accentColor: Color(0xFF5E35B1),
         destination: MainMenuDestination.higherOrLower,
+      ),
+      _HomeDestination(
+        title: '15 Preguntas',
+        subtitle: 'Preguntas si/no y 3 intentos diarios',
+        icon: Icons.psychology_alt_outlined,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/54.png',
+        accentColor: Color(0xFF1565C0),
+        destination: MainMenuDestination.pokemonQuestions,
       ),
       _HomeDestination(
         title: 'Daily Randommon',
@@ -413,6 +427,10 @@ class _MainMenuDrawer extends StatelessWidget {
           label: Text('Higher or Lower'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.psychology_alt_outlined),
+          label: Text('15 Preguntas'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.exit_to_app),
           label: Text('Quit'),
         ),
@@ -441,6 +459,7 @@ extension on MainMenuDestination {
       MainMenuDestination.dailyRandommon => 'Daily Randommon',
       MainMenuDestination.pokedlePro => 'POKEDLE PRO',
       MainMenuDestination.higherOrLower => 'Higher or Lower',
+      MainMenuDestination.pokemonQuestions => '15 Preguntas',
       MainMenuDestination.quit => 'Quit',
     };
   }

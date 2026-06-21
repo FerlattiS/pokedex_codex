@@ -26,6 +26,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   var _isRevealed = false;
   var _isLoadingNext = false;
   int? _selectedPokemonId;
+  final List<_HigherLowerRound> _roundHistory = [];
 
   Future<void> _loadRound({PokemonPreview? carryPokemon}) async {
     final catalog = _catalog.isEmpty
@@ -94,11 +95,22 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
     final selectedTotal = selected.id == left.id ? leftTotal : rightTotal;
     final otherTotal = selected.id == left.id ? rightTotal : leftTotal;
     final isCorrect = selectedTotal >= otherTotal;
+    final historyItem = _HigherLowerRound(
+      left: left,
+      right: right,
+      selected: selected,
+      winner: leftTotal >= rightTotal ? left : right,
+      wasCorrect: isCorrect,
+    );
 
     setState(() {
       _isRevealed = true;
       _lastGuessWasCorrect = isCorrect;
       _selectedPokemonId = selected.id;
+      _roundHistory.insert(0, historyItem);
+      if (_roundHistory.length > 8) {
+        _roundHistory.removeLast();
+      }
       _streak = isCorrect ? _streak + 1 : 0;
       if (_streak > _bestStreak) {
         _bestStreak = _streak;
@@ -111,7 +123,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
       return;
     }
 
-    final carryPokemon = _isRevealed ? _roundWinner() : null;
+    final carryPokemon = _isRevealed ? _nextCarryPokemon() : null;
 
     setState(() {
       _isLoadingNext = true;
@@ -213,6 +225,10 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
             const SizedBox(height: 16),
             if (_lastGuessWasCorrect != null)
               _ResultBanner(isCorrect: _lastGuessWasCorrect!),
+            if (_roundHistory.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _HigherLowerHistory(rounds: _roundHistory),
+            ],
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _isRevealed ? _nextRound : null,
@@ -229,15 +245,23 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
     return pokemon.stats.fold(0, (sum, stat) => sum + stat.value);
   }
 
-  PokemonPreview? _roundWinner() {
-    final left = _leftPokemon;
-    final right = _rightPokemon;
-    if (left == null || right == null) {
-      return null;
-    }
+  PokemonPreview? _nextCarryPokemon() => _rightPokemon;
+}
 
-    return _battleStatTotal(left) >= _battleStatTotal(right) ? left : right;
-  }
+class _HigherLowerRound {
+  const _HigherLowerRound({
+    required this.left,
+    required this.right,
+    required this.selected,
+    required this.winner,
+    required this.wasCorrect,
+  });
+
+  final PokemonPreview left;
+  final PokemonPreview right;
+  final PokemonPreview selected;
+  final PokemonPreview winner;
+  final bool wasCorrect;
 }
 
 class _HigherLowerCard extends StatelessWidget {
@@ -388,6 +412,95 @@ class _ResultBanner extends StatelessWidget {
               color: color,
               fontWeight: FontWeight.w800,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HigherLowerHistory extends StatelessWidget {
+  const _HigherLowerHistory({required this.rounds});
+
+  final List<_HigherLowerRound> rounds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Historial', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: rounds.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              return _HistoryTile(round: rounds[index]);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryTile extends StatelessWidget {
+  const _HistoryTile({required this.round});
+
+  final _HigherLowerRound round;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = round.wasCorrect
+        ? const Color(0xFF2E7D32)
+        : const Color(0xFFC62828);
+
+    return Container(
+      width: 210,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.65)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                round.wasCorrect ? Icons.check_circle : Icons.cancel,
+                size: 16,
+                color: color,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Ganador: ${round.winner.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            '${round.left.name} vs ${round.right.name}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Elegiste: ${round.selected.name}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
