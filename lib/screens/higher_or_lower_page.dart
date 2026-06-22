@@ -3,12 +3,18 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
+import '../services/game_results_repository.dart';
 import '../services/pokemon_repository.dart';
 
 class HigherOrLowerPage extends StatefulWidget {
-  const HigherOrLowerPage({super.key, required this.pokemonRepository});
+  const HigherOrLowerPage({
+    super.key,
+    required this.pokemonRepository,
+    required this.gameResultsRepository,
+  });
 
   final PokemonRepository pokemonRepository;
+  final GameResultsRepository gameResultsRepository;
 
   @override
   State<HigherOrLowerPage> createState() => _HigherOrLowerPageState();
@@ -17,6 +23,7 @@ class HigherOrLowerPage extends StatefulWidget {
 class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   final Random _random = Random();
   late Future<void> _loadFuture = _loadRound();
+  late final String _dateKey = _formatDateKey(DateTime.now());
   List<PokemonPreview> _catalog = [];
   PokemonPreview? _leftPokemon;
   PokemonPreview? _rightPokemon;
@@ -27,11 +34,14 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   var _isLoadingNext = false;
   int? _selectedPokemonId;
   final List<_HigherLowerRound> _roundHistory = [];
+  var _scope = _HigherLowerScope.full;
+  var _metric = _HigherLowerMetric.total;
 
   Future<void> _loadRound({PokemonPreview? carryPokemon}) async {
-    final catalog = _catalog.isEmpty
+    final fullCatalog = _catalog.isEmpty
         ? await widget.pokemonRepository.fetchPokemonCatalog()
         : _catalog;
+    final catalog = fullCatalog.where(_isInScope).toList();
     if (catalog.length < 2) {
       throw Exception('Catalogo insuficiente');
     }
@@ -69,7 +79,7 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
     }
 
     setState(() {
-      _catalog = catalog;
+      _catalog = fullCatalog;
       _leftPokemon = left;
       _rightPokemon = right;
       _lastGuessWasCorrect = null;
@@ -116,6 +126,26 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
         _bestStreak = _streak;
       }
     });
+
+    widget.gameResultsRepository.writeResult(
+      GameResult(
+        id: 'higher_or_lower.${DateTime.now().microsecondsSinceEpoch}',
+        gameId: 'higher_or_lower',
+        dateKey: _dateKey,
+        won: isCorrect,
+        score: isCorrect ? _streak : 0,
+        attempts: 1,
+        streak: isCorrect ? _streak : 0,
+        completedAt: DateTime.now(),
+        metadata: {
+          'metric': _metric.label,
+          'scope': _scope.label,
+          'leftId': '${left.id}',
+          'rightId': '${right.id}',
+          'selectedId': '${selected.id}',
+        },
+      ),
+    );
   }
 
   Future<void> _nextRound() async {
@@ -170,6 +200,13 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
             const Text(
               'Elegi cual tiene mayor battle stats total',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            _HigherLowerSettings(
+              scope: _scope,
+              metric: _metric,
+              onScopeChanged: (scope) => _changeSettings(scope: scope),
+              onMetricChanged: (metric) => _changeSettings(metric: metric),
             ),
             const SizedBox(height: 16),
             Row(
@@ -242,10 +279,91 @@ class _HigherOrLowerPageState extends State<HigherOrLowerPage> {
   }
 
   int _battleStatTotal(PokemonPreview pokemon) {
-    return pokemon.stats.fold(0, (sum, stat) => sum + stat.value);
+    if (_metric == _HigherLowerMetric.total) {
+      return pokemon.stats.fold(0, (sum, stat) => sum + stat.value);
+    }
+
+    for (final stat in pokemon.stats) {
+      if (stat.name == _metric.statName) {
+        return stat.value;
+      }
+    }
+
+    return 0;
   }
 
   PokemonPreview? _nextCarryPokemon() => _rightPokemon;
+
+  void _changeSettings({_HigherLowerScope? scope, _HigherLowerMetric? metric}) {
+    setState(() {
+      _scope = scope ?? _scope;
+      _metric = metric ?? _metric;
+      _leftPokemon = null;
+      _rightPokemon = null;
+      _lastGuessWasCorrect = null;
+      _selectedPokemonId = null;
+      _isRevealed = false;
+      _isLoadingNext = false;
+      _roundHistory.clear();
+      _streak = 0;
+      _loadFuture = _loadRound();
+    });
+  }
+
+  bool _isInScope(PokemonPreview pokemon) {
+    return switch (_scope) {
+      _HigherLowerScope.classic =>
+        (pokemon.generation ?? _generationFromId(pokemon.id)) <= 2,
+      _HigherLowerScope.full => true,
+      _HigherLowerScope.noLegendaries =>
+        !pokemon.isLegendary && !pokemon.isMythical,
+    };
+  }
+
+  int _generationFromId(int id) {
+    if (id <= 151) return 1;
+    if (id <= 251) return 2;
+    if (id <= 386) return 3;
+    if (id <= 493) return 4;
+    if (id <= 649) return 5;
+    if (id <= 721) return 6;
+    if (id <= 809) return 7;
+    if (id <= 905) return 8;
+    return 9;
+  }
+
+  String _formatDateKey(DateTime date) {
+    return [
+      date.year.toString().padLeft(4, '0'),
+      date.month.toString().padLeft(2, '0'),
+      date.day.toString().padLeft(2, '0'),
+    ].join('-');
+  }
+}
+
+enum _HigherLowerScope {
+  classic('Gen 1-2'),
+  full('Todos'),
+  noLegendaries('Sin L/M');
+
+  const _HigherLowerScope(this.label);
+
+  final String label;
+}
+
+enum _HigherLowerMetric {
+  total('BST', null),
+  hp('HP', 'HP'),
+  attack('Ataque', 'Ataque'),
+  defense('Defensa', 'Defensa'),
+  specialAttack('At. esp.', 'Ataque esp.'),
+  specialDefense('Def. esp.', 'Defensa esp.'),
+  speed('Velocidad', 'Velocidad');
+
+  const _HigherLowerMetric(this.label, this.statName);
+
+  final String label;
+  final String? statName;
 }
 
 class _HigherLowerRound {
@@ -262,6 +380,56 @@ class _HigherLowerRound {
   final PokemonPreview selected;
   final PokemonPreview winner;
   final bool wasCorrect;
+}
+
+class _HigherLowerSettings extends StatelessWidget {
+  const _HigherLowerSettings({
+    required this.scope,
+    required this.metric,
+    required this.onScopeChanged,
+    required this.onMetricChanged,
+  });
+
+  final _HigherLowerScope scope;
+  final _HigherLowerMetric metric;
+  final ValueChanged<_HigherLowerScope> onScopeChanged;
+  final ValueChanged<_HigherLowerMetric> onMetricChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<_HigherLowerScope>(
+          segments: [
+            for (final value in _HigherLowerScope.values)
+              ButtonSegment(value: value, label: Text(value.label)),
+          ],
+          selected: {scope},
+          onSelectionChanged: (selection) {
+            onScopeChanged(selection.first);
+          },
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<_HigherLowerMetric>(
+          initialValue: metric,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Comparar por',
+          ),
+          items: [
+            for (final value in _HigherLowerMetric.values)
+              DropdownMenuItem(value: value, child: Text(value.label)),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              onMetricChanged(value);
+            }
+          },
+        ),
+      ],
+    );
+  }
 }
 
 class _HigherLowerCard extends StatelessWidget {

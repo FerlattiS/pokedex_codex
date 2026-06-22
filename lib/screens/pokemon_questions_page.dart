@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/pokemon_preview.dart';
+import '../services/game_results_repository.dart';
 import '../services/pokemon_questions_progress_repository.dart';
 import '../services/pokemon_repository.dart';
 
@@ -9,11 +11,13 @@ class PokemonQuestionsPage extends StatefulWidget {
     super.key,
     required this.pokemonRepository,
     required this.progressRepository,
+    required this.gameResultsRepository,
     this.date,
   });
 
   final PokemonRepository pokemonRepository;
   final PokemonQuestionsProgressRepository progressRepository;
+  final GameResultsRepository gameResultsRepository;
   final DateTime? date;
 
   @override
@@ -36,6 +40,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   PokemonPreview? _selectedPokemon;
   String? _selectedQuestionId;
   var _hasWon = false;
+  var _resultWasSaved = false;
 
   bool get _hasLost => !_hasWon && _guesses.length >= _maxGuesses;
 
@@ -95,6 +100,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       _askedQuestions = askedQuestions;
       _guesses = guesses;
       _hasWon = guesses.any((guess) => guess.id == target.id);
+      _resultWasSaved = _isGameOver;
       _selectedQuestionId = _availableQuestions(askedQuestions).firstOrNull?.id;
     });
   }
@@ -148,6 +154,9 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     });
 
     await _persistState(guesses: nextGuesses);
+    if (hasWon || nextGuesses.length >= _maxGuesses) {
+      await _writeGameResult(guesses: nextGuesses, won: hasWon);
+    }
   }
 
   Future<void> _persistState({
@@ -163,6 +172,61 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         guessIds: (guesses ?? _guesses).map((pokemon) => pokemon.id).toList(),
       ),
     );
+  }
+
+  Future<void> _writeGameResult({
+    required List<PokemonPreview> guesses,
+    required bool won,
+  }) async {
+    if (_resultWasSaved) {
+      return;
+    }
+
+    final target = _target;
+    await widget.gameResultsRepository.writeResult(
+      GameResult(
+        id: 'pokemon_questions.$_sessionKey',
+        gameId: 'pokemon_questions',
+        dateKey: _dateKey,
+        won: won,
+        score: won ? _remainingQuestions : 0,
+        attempts: guesses.length,
+        streak: won ? 1 : 0,
+        completedAt: DateTime.now(),
+        metadata: {
+          if (target != null) 'targetId': '${target.id}',
+          'questionsUsed': '${_askedQuestions.length}',
+        },
+      ),
+    );
+
+    _resultWasSaved = true;
+  }
+
+  Future<void> _copyShareResult() async {
+    await Clipboard.setData(ClipboardData(text: _buildShareText()));
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Resultado copiado al portapapeles')),
+    );
+  }
+
+  String _buildShareText() {
+    final result = _hasWon
+        ? 'Gane'
+        : _hasLost
+        ? 'Perdi'
+        : 'En juego';
+
+    return [
+      '15 Preguntas $_dateKey',
+      '$result - preguntas ${_askedQuestions.length}/$_maxQuestions - intentos ${_guesses.length}/$_maxGuesses',
+      for (final question in _askedQuestions.reversed)
+        '${question.answer ? 'Si' : 'No'} - ${question.question.label}',
+    ].join('\n');
   }
 
   @override
@@ -240,6 +304,16 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
                 ),
               ],
             ),
+            if (_askedQuestions.isNotEmpty || _guesses.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _copyShareResult,
+                  icon: const Icon(Icons.ios_share),
+                  label: const Text('Copiar resultado'),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               isExpanded: true,
@@ -399,6 +473,20 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         answer: (pokemon) => pokemon.evolvesByItem,
       ),
       _QuestionDefinition(
+        id: 'has-evolution',
+        category: 'Evolucion',
+        label: 'Tiene linea evolutiva?',
+        answer: (pokemon) => pokemon.evolutionLine.length > 1,
+      ),
+      _QuestionDefinition(
+        id: 'final-stage',
+        category: 'Evolucion',
+        label: 'Es etapa final?',
+        answer: (pokemon) =>
+            pokemon.evolutionStage == PokemonEvolutionStage.finalStage ||
+            pokemon.evolutionStage == PokemonEvolutionStage.standalone,
+      ),
+      _QuestionDefinition(
         id: 'alternative-form',
         category: 'Forma',
         label: 'Es una forma alternativa?',
@@ -410,6 +498,55 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
           category: 'Evolucion',
           label: 'Es etapa evolutiva $stage?',
           answer: (pokemon) => _stageNumber(pokemon) == stage,
+        ),
+      _QuestionDefinition(
+        id: 'height-small',
+        category: 'Altura',
+        label: 'Mide menos de 1 metro?',
+        answer: (pokemon) => (_metricValue(pokemon.height) ?? 999) < 1,
+      ),
+      _QuestionDefinition(
+        id: 'height-large',
+        category: 'Altura',
+        label: 'Mide 2 metros o mas?',
+        answer: (pokemon) => (_metricValue(pokemon.height) ?? 0) >= 2,
+      ),
+      _QuestionDefinition(
+        id: 'weight-light',
+        category: 'Peso',
+        label: 'Pesa menos de 20 kg?',
+        answer: (pokemon) => (_metricValue(pokemon.weight) ?? 999) < 20,
+      ),
+      _QuestionDefinition(
+        id: 'weight-heavy',
+        category: 'Peso',
+        label: 'Pesa 100 kg o mas?',
+        answer: (pokemon) => (_metricValue(pokemon.weight) ?? 0) >= 100,
+      ),
+      for (final stat in _questionStats)
+        _QuestionDefinition(
+          id: 'top-stat-$stat',
+          category: 'Stats',
+          label: 'Su stat mas alto es $stat?',
+          answer: (pokemon) => _highestStat(pokemon) == stat,
+        ),
+      for (final move in _questionMoves)
+        _QuestionDefinition(
+          id: 'move-${move.apiName}',
+          category: 'Movimiento',
+          label: 'Puede aprender ${move.name}?',
+          answer: (pokemon) => pokemon.moves.any(
+            (pokemonMove) => pokemonMove.apiName == move.apiName,
+          ),
+        ),
+      for (final ability in _questionAbilities)
+        _QuestionDefinition(
+          id: 'ability-${ability.apiName}',
+          category: 'Habilidad',
+          label: 'Puede tener ${ability.name}?',
+          answer: (pokemon) => pokemon.abilities.any(
+            (pokemonAbility) => pokemonAbility.apiName == ability.apiName,
+          ),
         ),
     ];
   }
@@ -439,6 +576,26 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         pokemon.evolutionLine.length <= 2 ? 2 : 3,
       PokemonEvolutionStage.unknown => null,
     };
+  }
+
+  double? _metricValue(String value) {
+    final match = RegExp(r'\d+(\.\d+)?').firstMatch(value);
+    if (match == null) {
+      return null;
+    }
+
+    return double.tryParse(match.group(0)!);
+  }
+
+  String _highestStat(PokemonPreview pokemon) {
+    if (pokemon.stats.isEmpty) {
+      return '-';
+    }
+
+    final stats = [...pokemon.stats]
+      ..sort((first, second) => second.value.compareTo(first.value));
+
+    return stats.first.name;
   }
 
   String _formatDateKey(DateTime date) {
@@ -709,3 +866,37 @@ const _pokemonColors = [
   'Blanco',
   'Amarillo',
 ];
+
+const _questionStats = [
+  'HP',
+  'Ataque',
+  'Defensa',
+  'Ataque esp.',
+  'Defensa esp.',
+  'Velocidad',
+];
+
+const _questionMoves = [
+  _QuestionMove(name: 'Placaje', apiName: 'tackle'),
+  _QuestionMove(name: 'Aranazo', apiName: 'scratch'),
+  _QuestionMove(name: 'Impactrueno', apiName: 'thunder-shock'),
+];
+
+const _questionAbilities = [
+  _QuestionAbility(name: 'Espesura', apiName: 'overgrow'),
+  _QuestionAbility(name: 'Mar llamas', apiName: 'blaze'),
+];
+
+class _QuestionMove {
+  const _QuestionMove({required this.name, required this.apiName});
+
+  final String name;
+  final String apiName;
+}
+
+class _QuestionAbility {
+  const _QuestionAbility({required this.name, required this.apiName});
+
+  final String name;
+  final String apiName;
+}

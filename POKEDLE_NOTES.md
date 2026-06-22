@@ -82,13 +82,14 @@ Minijuego implementado:
 - Cada Pokemon participa como maximo en 2 duelos consecutivos, para evitar que
   un Pokemon con BST muy alto bloquee la jugabilidad durante demasiadas rondas.
 - El historial visual muestra duelos recientes, seleccion del usuario y ganador.
+- Se puede cambiar el alcance entre Gen 1-2, todos o sin legendarios/miticos.
+- Se puede comparar por BST total o por un stat puntual.
 - El perfil deberia registrar maxima racha, racha actual, partidas jugadas y
   mejor marca diaria.
 
 Pendiente:
 
-- Persistir racha y partidas en perfil.
-- Agregar dificultad o filtros por generacion.
+- Persistir racha continua entre sesiones.
 - Mostrar desglose de stats al revelar resultado.
 
 ## 15 Preguntas
@@ -100,24 +101,27 @@ Minijuego diario implementado:
 - Tiene 3 intentos para adivinar el Pokemon correcto.
 - El estado diario queda guardado localmente para que no se reinicie al salir al
   menu y volver.
+- Al ganar o perder se guarda un resultado comun de juego para el perfil.
+- Se puede copiar un resumen textual al portapapeles.
 - Las preguntas estan categorizadas por generacion, tipo, color, rareza,
   composicion de tipos, forma alternativa, evolucion por objeto y etapa
   evolutiva.
 - Generacion incluye preguntas exactas y rangos, por ejemplo si salio antes o
   despues de determinada generacion.
+- Tambien hay preguntas por altura, peso, stat mas alto, habilidades y
+  movimientos comunes.
 
 Pendientes:
 
-- Persistir resultado diario como estadistica historica.
 - Agregar estadisticas al perfil cuando exista el perfil de juegos.
-- Mejorar el set de preguntas con altura, peso, habilidades, habitat o region.
+- Mejorar el set de preguntas con habitat o region.
 - Separar preguntas por categorias para que la interfaz escale mejor.
 - Agregar boton de compartir resultado.
 
 ## Perfil de juegos
 
-No esta implementado todavia. La idea seria convertir el perfil actual en un
-centro de progreso para todos los minijuegos, no solo Pokedle.
+Implementado como primera version local. La idea es convertir el perfil actual
+en un centro de progreso para todos los minijuegos, no solo Pokedle.
 
 Datos utiles por juego:
 
@@ -130,7 +134,7 @@ Datos utiles por juego:
 - Mejor marca por modo o dificultad.
 - Ultima fecha jugada.
 
-Modelo posible:
+Modelo actual:
 
 - Una tabla/coleccion local y luego remota llamada `game_results`.
 - Campos comunes: `user_id`, `game_id`, `date_key`, `won`, `score`,

@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../models/pokemon_preview.dart';
+import '../models/user_pokemon_data.dart';
 import '../services/pokemon_repository.dart';
 import '../services/user_data_repository.dart';
 import '../widgets/pokemon_card.dart';
@@ -23,14 +26,24 @@ class DailyRandommonPage extends StatefulWidget {
 }
 
 class _DailyRandommonPageState extends State<DailyRandommonPage> {
-  late Future<PokemonPreview> _dailyPokemonFuture;
+  final Random _random = Random();
+  final TextEditingController _noteController = TextEditingController();
+  late Future<PokemonPreview> _shownPokemonFuture;
   Set<int> _favoritePokemonIds = {};
+  Map<int, PokemonNote> _notesByPokemonId = {};
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
-    _dailyPokemonFuture = _loadDailyPokemon();
+    _shownPokemonFuture = _loadDailyPokemon();
     _loadFavoritePokemonIds();
+    _loadNotes();
   }
 
   Future<PokemonPreview> _loadDailyPokemon() async {
@@ -45,6 +58,15 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
     return pokemon[seed % pokemon.length];
   }
 
+  Future<PokemonPreview> _loadRandomPokemon() async {
+    final pokemon = await widget.pokemonRepository.fetchPokemonCatalog();
+    if (pokemon.isEmpty) {
+      throw Exception('Catalogo vacio');
+    }
+
+    return pokemon[_random.nextInt(pokemon.length)];
+  }
+
   Future<void> _loadFavoritePokemonIds() async {
     final favoritePokemonIds = await widget.userDataRepository
         .readFavoritePokemonIds();
@@ -55,6 +77,17 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
 
     setState(() {
       _favoritePokemonIds = favoritePokemonIds;
+    });
+  }
+
+  Future<void> _loadNotes() async {
+    final notes = await widget.userDataRepository.readNotes();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _notesByPokemonId = {for (final note in notes) note.pokemonId: note};
     });
   }
 
@@ -73,10 +106,34 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
     await widget.userDataRepository.writeFavoritePokemonIds(nextFavorites);
   }
 
+  Future<void> _saveNote(PokemonPreview pokemon) async {
+    final text = _noteController.text.trim();
+    if (text.isEmpty) {
+      await widget.userDataRepository.deleteNote(pokemon.id);
+    } else {
+      await widget.userDataRepository.writeNote(
+        PokemonNote(
+          pokemonId: pokemon.id,
+          text: text,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+
+    await _loadNotes();
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Nota guardada')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<PokemonPreview>(
-      future: _dailyPokemonFuture,
+      future: _shownPokemonFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -92,7 +149,7 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
                 FilledButton(
                   onPressed: () {
                     setState(() {
-                      _dailyPokemonFuture = _loadDailyPokemon();
+                      _shownPokemonFuture = _loadDailyPokemon();
                     });
                   },
                   child: const Text('Reintentar'),
@@ -103,6 +160,10 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
         }
 
         final pokemon = snapshot.data!;
+        final note = _notesByPokemonId[pokemon.id];
+        if (_noteController.text != (note?.text ?? '')) {
+          _noteController.text = note?.text ?? '';
+        }
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -124,6 +185,32 @@ class _DailyRandommonPageState extends State<DailyRandommonPage> {
               onPressed: () => _openPokemonDetail(pokemon),
               icon: const Icon(Icons.open_in_new),
               label: const Text('Ver detalle'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _shownPokemonFuture = _loadRandomPokemon();
+                });
+              },
+              icon: const Icon(Icons.shuffle),
+              label: const Text('Ver otro aleatorio'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _noteController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Nota rapida',
+                hintText: 'Ideas, usos o comentarios sobre este Pokemon',
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: () => _saveNote(pokemon),
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Guardar nota'),
             ),
           ],
         );

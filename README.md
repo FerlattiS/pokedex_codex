@@ -19,16 +19,16 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Colores por tipo en chips, bordes y tarjetas.
 - Borde visible por tipo real en tarjetas de lista y cuadricula.
 - Insignias L/M en tarjetas para Pokemon legendarios y miticos.
-- Menu inicial para elegir Pokedex, minijuegos, perfil o favoritos.
-- Menu lateral con Pokedex, favoritos, perfil, About us, Help, Settings, Daily Randommon, POKEDLE PRO, Higher or Lower, 15 Preguntas y Quit.
+- Menu inicial para elegir Pokedex, hub de juegos, minijuegos, perfil o favoritos.
+- Menu lateral con Pokedex, favoritos, perfil, About us, Help, Settings, Juegos, Daily Randommon, POKEDLE PRO, Higher or Lower, 15 Preguntas y Quit.
 - Modo claro y modo oscuro.
 - Persistencia local del modo claro y modo oscuro.
 - Pantalla real de Settings con preferencias y estado de datos locales.
-- Daily Randommon funcional.
+- Daily Randommon funcional con favorito, detalle, nota rapida y opcion de ver otro aleatorio.
 - POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, color, forma, modos Gen 1-2/Todos y dificultad facil/dificil.
 - POKEDLE PRO permite copiar un resultado textual al portapapeles para compartir.
-- Higher or Lower para elegir cual Pokemon tiene mayor battle stats total, mantener racha, historial visual y rondas tipo cola.
-- 15 Preguntas como minijuego diario de preguntas si/no con estado local, categorias, 15 preguntas maximas y 3 intentos de respuesta.
+- Higher or Lower para elegir cual Pokemon tiene mayor stat, mantener racha, historial visual, modos por alcance/stat y rondas tipo cola.
+- 15 Preguntas como minijuego diario de preguntas si/no con estado local, resultado historico, compartir, categorias, 15 preguntas maximas y 3 intentos de respuesta.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
@@ -36,9 +36,10 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Detalle competitivo de movimientos con tipo, clase, poder, PP y precision.
 - Cache local para catalogo, detalle, habilidades y movimientos de PokeAPI.
 - Repositorio local de datos de usuario para favoritos, notas y equipos.
+- Repositorio local comun de resultados de juegos.
 - Favoritos locales desde tarjetas y detalle de Pokemon.
 - Pantalla dedicada para ver Pokemon favoritos.
-- Pantalla de perfil de usuario con resumen local, estado de Supabase e historial/rachas de Pokedle.
+- Pantalla de perfil de usuario con resumen local, estado de Supabase, historial/rachas de Pokedle y pestana Juegos.
 - Pantallas reales de About us y Help.
 - Disclaimer fan-made y educativo visible en About us.
 - Cliente Supabase opcional por variables de entorno.

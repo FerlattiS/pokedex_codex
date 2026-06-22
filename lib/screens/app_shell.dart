@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/game_results_repository.dart';
 import '../services/pokemon_repository.dart';
 import '../services/pokedle_progress_repository.dart';
 import '../services/pokemon_questions_progress_repository.dart';
@@ -24,6 +25,7 @@ enum MainMenuDestination {
   aboutUs,
   help,
   settings,
+  games,
   dailyRandommon,
   pokedlePro,
   higherOrLower,
@@ -37,6 +39,7 @@ class AppShell extends StatefulWidget {
     required this.pokemonRepository,
     required this.userDataRepository,
     required this.pokedleProgressRepository,
+    required this.gameResultsRepository,
     required this.pokemonQuestionsProgressRepository,
     required this.isDarkMode,
     required this.onDarkModeChanged,
@@ -46,6 +49,7 @@ class AppShell extends StatefulWidget {
   final PokemonRepository pokemonRepository;
   final UserDataRepository userDataRepository;
   final PokedleProgressRepository pokedleProgressRepository;
+  final GameResultsRepository gameResultsRepository;
   final PokemonQuestionsProgressRepository pokemonQuestionsProgressRepository;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
@@ -96,6 +100,7 @@ class _AppShellState extends State<AppShell> {
         MainMenuDestination.profile => ProfilePage(
           userDataRepository: widget.userDataRepository,
           pokedleProgressRepository: widget.pokedleProgressRepository,
+          gameResultsRepository: widget.gameResultsRepository,
           isSupabaseConfigured: widget.isSupabaseConfigured,
         ),
         MainMenuDestination.aboutUs => const AboutUsPage(),
@@ -104,6 +109,13 @@ class _AppShellState extends State<AppShell> {
           isDarkMode: widget.isDarkMode,
           onDarkModeChanged: widget.onDarkModeChanged,
           isSupabaseConfigured: widget.isSupabaseConfigured,
+        ),
+        MainMenuDestination.games => _GamesHomePage(
+          onDestinationSelected: (destination) {
+            setState(() {
+              _destination = destination;
+            });
+          },
         ),
         MainMenuDestination.dailyRandommon => DailyRandommonPage(
           pokemonRepository: widget.pokemonRepository,
@@ -115,10 +127,12 @@ class _AppShellState extends State<AppShell> {
         ),
         MainMenuDestination.higherOrLower => HigherOrLowerPage(
           pokemonRepository: widget.pokemonRepository,
+          gameResultsRepository: widget.gameResultsRepository,
         ),
         MainMenuDestination.pokemonQuestions => PokemonQuestionsPage(
           pokemonRepository: widget.pokemonRepository,
           progressRepository: widget.pokemonQuestionsProgressRepository,
+          gameResultsRepository: widget.gameResultsRepository,
         ),
         MainMenuDestination.quit => const PlaceholderPage(
           title: 'Quit',
@@ -145,6 +159,15 @@ class _MainMenuHomePage extends StatelessWidget {
             'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
         accentColor: Color(0xFF2E7D32),
         destination: MainMenuDestination.pokedex,
+      ),
+      _HomeDestination(
+        title: 'Juegos',
+        subtitle: 'Todos los minijuegos en un solo lugar',
+        icon: Icons.sports_esports_outlined,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/151.png',
+        accentColor: Color(0xFFAD1457),
+        destination: MainMenuDestination.games,
       ),
       _HomeDestination(
         title: 'POKEDLE PRO',
@@ -364,6 +387,77 @@ class _PokedleAppBarTitle extends StatelessWidget {
   }
 }
 
+class _GamesHomePage extends StatelessWidget {
+  const _GamesHomePage({required this.onDestinationSelected});
+
+  final ValueChanged<MainMenuDestination> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final games = [
+      _HomeDestination(
+        title: 'POKEDLE PRO',
+        subtitle: 'Adivinar el Pokemon diario por pistas',
+        icon: Icons.grid_view,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10088.png',
+        accentColor: Color(0xFFC2185B),
+        destination: MainMenuDestination.pokedlePro,
+      ),
+      _HomeDestination(
+        title: 'Higher or Lower',
+        subtitle: 'Rachas comparando stats',
+        icon: Icons.trending_up,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png',
+        accentColor: Color(0xFF5E35B1),
+        destination: MainMenuDestination.higherOrLower,
+      ),
+      _HomeDestination(
+        title: '15 Preguntas',
+        subtitle: 'Preguntas si/no y 3 intentos diarios',
+        icon: Icons.psychology_alt_outlined,
+        spriteUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/54.png',
+        accentColor: Color(0xFF1565C0),
+        destination: MainMenuDestination.pokemonQuestions,
+      ),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Juegos',
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        const Text('Elegí un desafio Pokemon', textAlign: TextAlign.center),
+        const SizedBox(height: 20),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: games.length,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 320,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.35,
+          ),
+          itemBuilder: (context, index) {
+            final item = games[index];
+            return _HomeDestinationCard(
+              item: item,
+              onTap: () => onDestinationSelected(item.destination),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class _MainMenuDrawer extends StatelessWidget {
   const _MainMenuDrawer({
     required this.selectedDestination,
@@ -419,6 +513,10 @@ class _MainMenuDrawer extends StatelessWidget {
           label: Text('Settings'),
         ),
         const NavigationDrawerDestination(
+          icon: Icon(Icons.sports_esports_outlined),
+          label: Text('Juegos'),
+        ),
+        const NavigationDrawerDestination(
           icon: Icon(Icons.today_outlined),
           label: Text('Daily Randommon'),
         ),
@@ -460,6 +558,7 @@ extension on MainMenuDestination {
       MainMenuDestination.aboutUs => 'About us',
       MainMenuDestination.help => 'Help',
       MainMenuDestination.settings => 'Settings',
+      MainMenuDestination.games => 'Juegos',
       MainMenuDestination.dailyRandommon => 'Daily Randommon',
       MainMenuDestination.pokedlePro => 'POKEDLE PRO',
       MainMenuDestination.higherOrLower => 'Higher or Lower',

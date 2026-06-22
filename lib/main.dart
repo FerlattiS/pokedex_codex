@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/app_shell.dart';
 import 'services/app_settings_repository.dart';
+import 'services/game_results_repository.dart';
 import 'services/pokedle_progress_repository.dart';
 import 'services/pokemon_questions_progress_repository.dart';
 import 'services/pokemon_cache_store.dart';
@@ -29,6 +30,7 @@ Future<void> main() async {
       ),
       userDataRepository: LocalUserDataRepository(preferences),
       pokedleProgressRepository: LocalPokedleProgressRepository(preferences),
+      gameResultsRepository: LocalGameResultsRepository(preferences),
       pokemonQuestionsProgressRepository:
           LocalPokemonQuestionsProgressRepository(preferences),
       appSettingsRepository: appSettingsRepository,
@@ -44,6 +46,7 @@ class MyApp extends StatefulWidget {
     this.pokemonRepository,
     this.userDataRepository,
     this.pokedleProgressRepository,
+    this.gameResultsRepository,
     this.pokemonQuestionsProgressRepository,
     this.appSettingsRepository,
     this.initialThemeMode = ThemeMode.light,
@@ -53,6 +56,7 @@ class MyApp extends StatefulWidget {
   final PokemonRepository? pokemonRepository;
   final UserDataRepository? userDataRepository;
   final PokedleProgressRepository? pokedleProgressRepository;
+  final GameResultsRepository? gameResultsRepository;
   final PokemonQuestionsProgressRepository? pokemonQuestionsProgressRepository;
   final AppSettingsRepository? appSettingsRepository;
   final ThemeMode initialThemeMode;
@@ -103,6 +107,8 @@ class _MyAppState extends State<MyApp> {
         pokedleProgressRepository:
             widget.pokedleProgressRepository ??
             MemoryPokedleProgressRepository(),
+        gameResultsRepository:
+            widget.gameResultsRepository ?? MemoryGameResultsRepository(),
         pokemonQuestionsProgressRepository:
             widget.pokemonQuestionsProgressRepository ??
             MemoryPokemonQuestionsProgressRepository(),

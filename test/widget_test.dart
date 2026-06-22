@@ -5,6 +5,7 @@ import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
 import 'package:pokedex_codex/models/user_pokemon_data.dart';
 import 'package:pokedex_codex/screens/pokedle_page.dart';
+import 'package:pokedex_codex/services/game_results_repository.dart';
 import 'package:pokedex_codex/services/pokedle_progress_repository.dart';
 import 'package:pokedex_codex/services/pokemon_questions_progress_repository.dart';
 import 'package:pokedex_codex/services/pokemon_repository.dart';
@@ -368,6 +369,7 @@ void main() {
   testWidgets('Opens profile from the main menu', (WidgetTester tester) async {
     final userDataRepository = MemoryUserDataRepository();
     final pokedleProgressRepository = MemoryPokedleProgressRepository();
+    final gameResultsRepository = MemoryGameResultsRepository();
     await userDataRepository.writeFavoritePokemonIds({1, 4});
     await userDataRepository.writeNote(
       PokemonNote(
@@ -396,17 +398,37 @@ void main() {
         completedAt: DateTime(2026, 6, 21),
       ),
     );
+    await gameResultsRepository.writeResult(
+      GameResult(
+        id: 'pokemon_questions.2026-06-21',
+        gameId: 'pokemon_questions',
+        dateKey: '2026-06-21',
+        won: true,
+        score: 12,
+        attempts: 2,
+        streak: 1,
+        completedAt: DateTime(2026, 6, 21),
+      ),
+    );
 
     await tester.pumpWidget(
       MyApp(
         pokemonRepository: pokemonRepository,
         userDataRepository: userDataRepository,
         pokedleProgressRepository: pokedleProgressRepository,
+        gameResultsRepository: gameResultsRepository,
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Perfil'));
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationDrawer),
+        matching: find.text('Perfil'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Entrenador'), findsOneWidget);
@@ -426,6 +448,12 @@ void main() {
     expect(find.text('Racha actual'), findsOneWidget);
     expect(find.text('Mejor racha'), findsOneWidget);
     expect(find.text('Ratio de victoria'), findsOneWidget);
+
+    await tester.tap(find.text('Juegos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('15 Preguntas'), findsWidgets);
+    expect(find.text('Mejor score'), findsOneWidget);
   });
 
   testWidgets('Opens About us and Help pages from the main menu', (
@@ -493,6 +521,10 @@ void main() {
 
     expect(find.text('Pokemon de hoy'), findsOneWidget);
     expect(find.text('Ver detalle'), findsOneWidget);
+    expect(find.text('Ver otro aleatorio'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar nota'), findsOneWidget);
   });
 
   testWidgets('Opens Daily Randommon detail page', (WidgetTester tester) async {
@@ -541,7 +573,13 @@ void main() {
     expect(find.text('Mejor: 0'), findsOneWidget);
     expect(find.text('??? BST'), findsNWidgets(2));
 
-    await tester.tap(find.byType(InkWell).first);
+    await tester.scrollUntilVisible(find.text('??? BST').first, 120);
+    await tester.tap(
+      find.ancestor(
+        of: find.text('??? BST').first,
+        matching: find.byType(InkWell),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.textContaining('BST'), findsWidgets);
@@ -556,11 +594,13 @@ void main() {
   ) async {
     final questionsProgressRepository =
         MemoryPokemonQuestionsProgressRepository();
+    final gameResultsRepository = MemoryGameResultsRepository();
 
     await tester.pumpWidget(
       MyApp(
         pokemonRepository: pokemonRepository,
         pokemonQuestionsProgressRepository: questionsProgressRepository,
+        gameResultsRepository: gameResultsRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -585,7 +625,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Preguntas: 14/15'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
     expect(find.text('Preguntas realizadas'), findsOneWidget);
+    expect(find.text('Copiar resultado'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
