@@ -617,8 +617,17 @@ void main() {
       find.byKey(const ValueKey('pokemonQuestionsCategoryField')),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('pokemonQuestionsQuestionField')),
+      120,
+      scrollable: _firstListScrollView(),
+    );
     expect(
       find.byKey(const ValueKey('pokemonQuestionsQuestionField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('pokemonQuestionsSearchField')),
       findsOneWidget,
     );
     expect(find.text('Generacion (25)'), findsOneWidget);
@@ -635,6 +644,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('pokemonQuestionsGuessField')),
       120,
+      scrollable: _firstListScrollView(),
     );
     expect(
       find.byKey(const ValueKey('pokemonQuestionsGuessField')),
@@ -769,6 +779,47 @@ void main() {
     expect(find.text('0.4 m'), findsOneWidget);
     expect(find.text('6.0 kg'), findsOneWidget);
     expect(find.text('Velocidad 90'), findsOneWidget);
+  });
+
+  testWidgets('Confirms before spending a 15 Preguntas guess', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PokemonQuestionsPage(
+            pokemonRepository: pokemonRepository,
+            progressRepository: MemoryPokemonQuestionsProgressRepository(),
+            gameResultsRepository: MemoryGameResultsRepository(),
+            date: DateTime(2026, 6, 22),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('pokemonQuestionsGuessField')),
+      120,
+      scrollable: _firstListScrollView(),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('pokemonQuestionsGuessField')),
+      'bulba',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bulbasaur').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adivinar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usar un intento?'), findsOneWidget);
+    expect(find.text('Intentos: 3/3'), findsOneWidget);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usar un intento?'), findsNothing);
+    expect(find.text('Intentos: 3/3'), findsOneWidget);
   });
 
   testWidgets('Switches between light and dark mode', (
@@ -909,7 +960,19 @@ Finder _drawerScrollView() {
       .first;
 }
 
+Finder _firstListScrollView() {
+  return find
+      .descendant(
+        of: find.byType(ListView).first,
+        matching: find.byType(Scrollable),
+      )
+      .first;
+}
+
 class _FakePokemonRepository implements PokemonRepository {
+  @override
+  Future<void> clearCache() async {}
+
   @override
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302}) async {
     return const [
@@ -1147,6 +1210,9 @@ class _FakePokemonRepository implements PokemonRepository {
 }
 
 class _FailingPokemonRepository implements PokemonRepository {
+  @override
+  Future<void> clearCache() async {}
+
   @override
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302}) async {
     throw Exception('Test error');

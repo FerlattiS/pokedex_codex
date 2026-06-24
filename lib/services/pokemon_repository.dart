@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -38,6 +39,8 @@ abstract class PokemonRepository {
   Future<PokemonAbilityDetail> fetchAbilityDetail(String abilityName);
 
   Future<PokemonMoveDetail> fetchMoveDetail(String moveName);
+
+  Future<void> clearCache() async {}
 }
 
 class PokeApiPokemonRepository implements PokemonRepository {
@@ -55,6 +58,18 @@ class PokeApiPokemonRepository implements PokemonRepository {
   final Map<String, PokemonMoveDetail> _moveCache = {};
   List<PokemonPreview>? _catalogCache;
   var _catalogLimit = 0;
+
+  @override
+  Future<void> clearCache() async {
+    _typeCache.clear();
+    _detailCache.clear();
+    _metadataCache.clear();
+    _abilityCache.clear();
+    _moveCache.clear();
+    _catalogCache = null;
+    _catalogLimit = 0;
+    await cacheStore?.clear();
+  }
 
   @override
   Future<List<PokemonPreview>> fetchPokemonCatalog({int limit = 1302}) async {
@@ -75,7 +90,21 @@ class PokeApiPokemonRepository implements PokemonRepository {
       path: '${_baseUri.path}/pokemon',
       queryParameters: {'limit': '$limit', 'offset': '0'},
     );
-    final response = await _client.get(listUri);
+    http.Response response;
+    try {
+      response = await _get(listUri);
+    } catch (_) {
+      final staleCatalog = await cacheStore?.readCatalog(
+        limit: limit,
+        allowExpired: true,
+      );
+      if (staleCatalog != null) {
+        _catalogCache = staleCatalog;
+        _catalogLimit = limit;
+        return staleCatalog;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception('No se pudo cargar la lista de Pokemon');
@@ -119,7 +148,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
         final typeUri = _baseUri.replace(
           path: '${_baseUri.path}/type/$typeName',
         );
-        final response = await _client.get(typeUri);
+        final response = await _get(typeUri);
 
         if (response.statusCode != 200) {
           throw Exception('No se pudo cargar el tipo $typeName');
@@ -212,12 +241,21 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return storedDetail;
     }
 
-    return _fetchPokemonDetail(id);
+    try {
+      return await _fetchPokemonDetail(id);
+    } catch (_) {
+      final staleDetail = await cacheStore?.readDetail(id, allowExpired: true);
+      if (staleDetail != null) {
+        _detailCache[id] = staleDetail;
+        return staleDetail;
+      }
+      rethrow;
+    }
   }
 
   Future<PokemonPreview> _fetchPokemonDetail(int id) async {
     final detailUri = _baseUri.replace(path: '${_baseUri.path}/pokemon/$id');
-    final response = await _client.get(detailUri);
+    final response = await _get(detailUri);
 
     if (response.statusCode != 200) {
       throw Exception('No se pudo cargar el Pokemon');
@@ -236,7 +274,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final speciesUrl = species?['url'] as String?;
     final speciesResponse = speciesUrl == null
         ? http.Response('{}', 404)
-        : await _client.get(Uri.parse(speciesUrl));
+        : await _get(Uri.parse(speciesUrl));
 
     final metadata = await _readPokemonMetadata(
       speciesResponse,
@@ -293,9 +331,22 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return storedAbility;
     }
 
-    final response = await _client.get(
-      _baseUri.replace(path: '${_baseUri.path}/ability/$abilityName'),
-    );
+    http.Response response;
+    try {
+      response = await _get(
+        _baseUri.replace(path: '${_baseUri.path}/ability/$abilityName'),
+      );
+    } catch (_) {
+      final staleAbility = await cacheStore?.readAbility(
+        abilityName,
+        allowExpired: true,
+      );
+      if (staleAbility != null) {
+        _abilityCache[abilityName] = staleAbility;
+        return staleAbility;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception('No se pudo cargar la habilidad');
@@ -330,9 +381,22 @@ class PokeApiPokemonRepository implements PokemonRepository {
       return storedMove;
     }
 
-    final response = await _client.get(
-      _baseUri.replace(path: '${_baseUri.path}/move/$moveName'),
-    );
+    http.Response response;
+    try {
+      response = await _get(
+        _baseUri.replace(path: '${_baseUri.path}/move/$moveName'),
+      );
+    } catch (_) {
+      final staleMove = await cacheStore?.readMove(
+        moveName,
+        allowExpired: true,
+      );
+      if (staleMove != null) {
+        _moveCache[moveName] = staleMove;
+        return staleMove;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception('No se pudo cargar el movimiento');
@@ -379,13 +443,13 @@ class PokeApiPokemonRepository implements PokemonRepository {
     final speciesUri = _baseUri.replace(
       path: '${_baseUri.path}/pokemon-species/$id',
     );
-    final speciesResponse = await _client.get(speciesUri);
+    final speciesResponse = await _get(speciesUri);
     if (speciesResponse.statusCode == 200) {
       return _SpeciesData(response: speciesResponse);
     }
 
     final pokemonUri = _baseUri.replace(path: '${_baseUri.path}/pokemon/$id');
-    final pokemonResponse = await _client.get(pokemonUri);
+    final pokemonResponse = await _get(pokemonUri);
     if (pokemonResponse.statusCode != 200) {
       return _SpeciesData(response: speciesResponse);
     }
@@ -399,7 +463,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     }
 
     return _SpeciesData(
-      response: await _client.get(Uri.parse(speciesUrl)),
+      response: await _get(Uri.parse(speciesUrl)),
       pokemonApiName: pokemonData['name'] as String?,
     );
   }
@@ -413,7 +477,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
         final typeUri = _baseUri.replace(
           path: '${_baseUri.path}/type/$typeName',
         );
-        final response = await _client.get(typeUri);
+        final response = await _get(typeUri);
 
         if (response.statusCode != 200) {
           return;
@@ -521,7 +585,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     var evolvesByItem = false;
 
     if (evolutionChainUrl != null) {
-      final evolutionResponse = await _client.get(Uri.parse(evolutionChainUrl));
+      final evolutionResponse = await _get(Uri.parse(evolutionChainUrl));
       if (evolutionResponse.statusCode == 200) {
         final evolutionData =
             jsonDecode(evolutionResponse.body) as Map<String, dynamic>;
@@ -1075,6 +1139,31 @@ class PokeApiPokemonRepository implements PokemonRepository {
 
   String _formatMetric(int value, {String unit = 'm'}) {
     return '${(value / 10).toStringAsFixed(1)} $unit';
+  }
+
+  Future<http.Response> _get(Uri uri) async {
+    Object? lastError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final response = await _client
+            .get(uri)
+            .timeout(const Duration(seconds: 8));
+        if (response.statusCode < 500 || attempt == 2) {
+          return response;
+        }
+        lastError = Exception('PokeAPI respondio ${response.statusCode}');
+      } on TimeoutException catch (error) {
+        lastError = error;
+      } catch (error) {
+        lastError = error;
+      }
+
+      if (attempt < 2) {
+        await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
+      }
+    }
+
+    throw Exception('No se pudo conectar con PokeAPI: $lastError');
   }
 
   int _readIdFromUrl(String url) {

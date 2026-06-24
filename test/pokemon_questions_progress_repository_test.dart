@@ -19,4 +19,21 @@ void main() {
     expect(savedState?.askedQuestionIds, ['generation-1', 'type-Fuego']);
     expect(savedState?.guessIds, [4, 25]);
   });
+
+  test('Stores Pokemon questions interface preferences locally', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalPokemonQuestionsProgressRepository(preferences);
+
+    await repository.writePreferences(
+      const PokemonQuestionsPreferences(
+        selectedCategory: 'Tipo',
+        favoriteQuestionIds: ['type-Fuego', 'dual-type'],
+      ),
+    );
+
+    final savedPreferences = await repository.readPreferences();
+    expect(savedPreferences.selectedCategory, 'Tipo');
+    expect(savedPreferences.favoriteQuestionIds, ['type-Fuego', 'dual-type']);
+  });
 }

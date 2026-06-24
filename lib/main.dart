@@ -22,12 +22,14 @@ Future<void> main() async {
     preferences,
   );
   final themeMode = await appSettingsRepository.readThemeMode();
+  final pokemonCacheStore = SharedPreferencesPokemonCacheStore(preferences);
 
   runApp(
     MyApp(
       pokemonRepository: PokeApiPokemonRepository(
-        cacheStore: SharedPreferencesPokemonCacheStore(preferences),
+        cacheStore: pokemonCacheStore,
       ),
+      pokemonCacheStore: pokemonCacheStore,
       userDataRepository: LocalUserDataRepository(preferences),
       pokedleProgressRepository: LocalPokedleProgressRepository(preferences),
       gameResultsRepository: LocalGameResultsRepository(preferences),
@@ -48,6 +50,7 @@ class MyApp extends StatefulWidget {
     this.pokedleProgressRepository,
     this.gameResultsRepository,
     this.pokemonQuestionsProgressRepository,
+    this.pokemonCacheStore,
     this.appSettingsRepository,
     this.initialThemeMode = ThemeMode.light,
     this.isSupabaseConfigured = false,
@@ -58,6 +61,7 @@ class MyApp extends StatefulWidget {
   final PokedleProgressRepository? pokedleProgressRepository;
   final GameResultsRepository? gameResultsRepository;
   final PokemonQuestionsProgressRepository? pokemonQuestionsProgressRepository;
+  final PokemonCacheStore? pokemonCacheStore;
   final AppSettingsRepository? appSettingsRepository;
   final ThemeMode initialThemeMode;
   final bool isSupabaseConfigured;
@@ -112,6 +116,7 @@ class _MyAppState extends State<MyApp> {
         pokemonQuestionsProgressRepository:
             widget.pokemonQuestionsProgressRepository ??
             MemoryPokemonQuestionsProgressRepository(),
+        pokemonCacheStore: widget.pokemonCacheStore,
         isDarkMode: _themeMode == ThemeMode.dark,
         onDarkModeChanged: _setDarkMode,
         isSupabaseConfigured: widget.isSupabaseConfigured,

@@ -115,6 +115,10 @@ Minijuego diario implementado:
 - Incluye preguntas por habitat y region de origen.
 - Al terminar revela un resumen visual con tipos, region, habitat, generacion,
   forma, altura, peso y stat principal.
+- Recuerda la ultima categoria, permite buscar y marcar preguntas favoritas.
+- Confirma antes de consumir uno de los tres intentos.
+- Las definiciones y reglas de preguntas estan separadas de la pantalla para
+  facilitar pruebas y crecimiento.
 
 Pendientes:
 

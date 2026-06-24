@@ -550,6 +550,54 @@ void main() {
     expect(pokemon.first.name, 'Pikachu');
     expect(pokemon.first.types, ['Electrico']);
   });
+
+  test('Reports and clears Pokemon cache entries', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final cacheStore = SharedPreferencesPokemonCacheStore(preferences);
+
+    await cacheStore.writeCatalog(
+      limit: 1,
+      pokemon: const [PokemonPreview(id: 25, name: 'Pikachu')],
+    );
+    await cacheStore.writeDetail(
+      const PokemonPreview(id: 25, name: 'Pikachu', region: 'Kanto'),
+    );
+
+    final populatedStats = await cacheStore.readStats();
+    expect(populatedStats.catalogEntries, 1);
+    expect(populatedStats.detailEntries, 1);
+    expect(populatedStats.totalEntries, 2);
+
+    await cacheStore.clear();
+
+    final emptyStats = await cacheStore.readStats();
+    expect(emptyStats.totalEntries, 0);
+  });
+
+  test(
+    'Falls back to expired catalog cache when network is unavailable',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final cacheStore = SharedPreferencesPokemonCacheStore(preferences);
+      await cacheStore.writeCatalog(
+        limit: 1,
+        pokemon: const [PokemonPreview(id: 25, name: 'Pikachu')],
+      );
+      await preferences.setInt('pokemon.cache.v3.catalog.timestamp', 0);
+      final repository = PokeApiPokemonRepository(
+        cacheStore: cacheStore,
+        client: MockClient((request) async {
+          throw Exception('Offline');
+        }),
+      );
+
+      final pokemon = await repository.fetchPokemonCatalog(limit: 1);
+
+      expect(pokemon.single.name, 'Pikachu');
+    },
+  );
 }
 
 String _typeResponse(List<String> names, List<int> ids) {

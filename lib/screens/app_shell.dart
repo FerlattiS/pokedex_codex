@@ -4,6 +4,7 @@ import '../services/game_results_repository.dart';
 import '../services/pokemon_repository.dart';
 import '../services/pokedle_progress_repository.dart';
 import '../services/pokemon_questions_progress_repository.dart';
+import '../services/pokemon_cache_store.dart';
 import '../services/user_data_repository.dart';
 import 'about_us_page.dart';
 import 'daily_randommon_page.dart';
@@ -41,6 +42,7 @@ class AppShell extends StatefulWidget {
     required this.pokedleProgressRepository,
     required this.gameResultsRepository,
     required this.pokemonQuestionsProgressRepository,
+    this.pokemonCacheStore,
     required this.isDarkMode,
     required this.onDarkModeChanged,
     required this.isSupabaseConfigured,
@@ -51,6 +53,7 @@ class AppShell extends StatefulWidget {
   final PokedleProgressRepository pokedleProgressRepository;
   final GameResultsRepository gameResultsRepository;
   final PokemonQuestionsProgressRepository pokemonQuestionsProgressRepository;
+  final PokemonCacheStore? pokemonCacheStore;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
   final bool isSupabaseConfigured;
@@ -109,6 +112,8 @@ class _AppShellState extends State<AppShell> {
           isDarkMode: widget.isDarkMode,
           onDarkModeChanged: widget.onDarkModeChanged,
           isSupabaseConfigured: widget.isSupabaseConfigured,
+          pokemonCacheStore: widget.pokemonCacheStore,
+          onClearPokemonCache: widget.pokemonRepository.clearCache,
         ),
         MainMenuDestination.games => _GamesHomePage(
           onDestinationSelected: (destination) {

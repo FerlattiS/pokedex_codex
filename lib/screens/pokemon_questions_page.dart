@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/pokemon_preview.dart';
+import '../models/pokemon_question_definition.dart';
 import '../services/game_results_repository.dart';
 import '../services/pokemon_questions_progress_repository.dart';
 import '../services/pokemon_repository.dart';
+import '../widgets/game_reveal_panel.dart';
+import '../widgets/pokemon_type_chips.dart';
 
 class PokemonQuestionsPage extends StatefulWidget {
   const PokemonQuestionsPage({
@@ -33,6 +36,8 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   late final String _sessionKey = _dateKey;
   late Future<void> _loadFuture = _loadGame();
   final TextEditingController _guessController = TextEditingController();
+  final TextEditingController _questionSearchController =
+      TextEditingController();
   List<PokemonPreview> _catalog = [];
   List<_AskedQuestion> _askedQuestions = [];
   List<PokemonPreview> _guesses = [];
@@ -40,6 +45,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   PokemonPreview? _selectedPokemon;
   String? _selectedCategory;
   String? _selectedQuestionId;
+  Set<String> _favoriteQuestionIds = {};
   var _hasWon = false;
   var _resultWasSaved = false;
 
@@ -54,6 +60,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   @override
   void dispose() {
     _guessController.dispose();
+    _questionSearchController.dispose();
     super.dispose();
   }
 
@@ -68,8 +75,9 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       targetPreview.id,
     );
     final savedState = await widget.progressRepository.readState(_sessionKey);
+    final preferences = await widget.progressRepository.readPreferences();
     final questionById = {
-      for (final question in _buildQuestions()) question.id: question,
+      for (final question in buildPokemonQuestions()) question.id: question,
     };
     final askedQuestions = <_AskedQuestion>[];
     final guesses = <PokemonPreview>[];
@@ -102,7 +110,11 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       _guesses = guesses;
       _hasWon = guesses.any((guess) => guess.id == target.id);
       _resultWasSaved = _isGameOver;
-      _selectAvailableQuestion(askedQuestions: askedQuestions);
+      _favoriteQuestionIds = preferences.favoriteQuestionIds.toSet();
+      _selectAvailableQuestion(
+        askedQuestions: askedQuestions,
+        preferredCategory: preferences.selectedCategory,
+      );
     });
   }
 
@@ -130,6 +142,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     });
 
     await _persistState(askedQuestions: nextAsked);
+    await _writeQuestionPreferences();
   }
 
   Future<void> _submitGuess() async {
@@ -147,6 +160,31 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       return;
     }
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Usar un intento?'),
+          content: Text(
+            'Vas a responder ${selectedPokemon.name}. Te quedan $_remainingGuesses intentos.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
     final nextGuesses = [selectedPokemon, ..._guesses];
     final hasWon = selectedPokemon.id == target.id;
 
@@ -161,6 +199,24 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     if (hasWon || nextGuesses.length >= _maxGuesses) {
       await _writeGameResult(guesses: nextGuesses, won: hasWon);
     }
+  }
+
+  Future<void> _writeQuestionPreferences() async {
+    await widget.progressRepository.writePreferences(
+      PokemonQuestionsPreferences(
+        selectedCategory: _selectedCategory,
+        favoriteQuestionIds: _favoriteQuestionIds.toList()..sort(),
+      ),
+    );
+  }
+
+  void _toggleFavoriteQuestion(String questionId) {
+    setState(() {
+      if (!_favoriteQuestionIds.add(questionId)) {
+        _favoriteQuestionIds.remove(questionId);
+      }
+    });
+    _writeQuestionPreferences();
   }
 
   Future<void> _persistState({
@@ -270,7 +326,10 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
           availableQuestions,
           _selectedCategory,
         );
-        final selectedQuestion = _selectedQuestion;
+        final visibleQuestions = _visibleQuestions(questions);
+        final selectedQuestion = visibleQuestions
+            .where((question) => question.id == _selectedQuestionId)
+            .firstOrNull;
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -348,40 +407,109 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
                   : (value) {
                       setState(() {
                         _selectedCategory = value;
+                        _questionSearchController.clear();
                         _selectedQuestionId = _questionsForCategory(
                           availableQuestions,
                           value,
                         ).firstOrNull?.id;
                       });
+                      _writeQuestionPreferences();
                     },
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              key: const ValueKey('pokemonQuestionsQuestionField'),
-              isExpanded: true,
-              initialValue: selectedQuestion?.id,
-              items: [
-                for (final question in questions)
-                  DropdownMenuItem(
-                    value: question.id,
-                    child: Text(
-                      question.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Pregunta',
+            TextField(
+              key: const ValueKey('pokemonQuestionsSearchField'),
+              controller: _questionSearchController,
+              enabled: !_isGameOver && _remainingQuestions > 0,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: 'Buscar pregunta',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _questionSearchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Limpiar busqueda',
+                        onPressed: () {
+                          setState(() {
+                            _questionSearchController.clear();
+                            _selectedQuestionId = questions.firstOrNull?.id;
+                          });
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
               ),
-              onChanged: _isGameOver || _remainingQuestions <= 0
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _selectedQuestionId = value;
-                      });
-                    },
+              onChanged: (_) {
+                setState(() {
+                  _selectedQuestionId = _visibleQuestions(
+                    questions,
+                  ).firstOrNull?.id;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: const ValueKey('pokemonQuestionsQuestionField'),
+                    isExpanded: true,
+                    initialValue: selectedQuestion?.id,
+                    items: [
+                      for (final question in visibleQuestions)
+                        DropdownMenuItem(
+                          value: question.id,
+                          child: Row(
+                            children: [
+                              if (_favoriteQuestionIds.contains(question.id))
+                                const Padding(
+                                  padding: EdgeInsets.only(right: 6),
+                                  child: Icon(Icons.star, size: 17),
+                                ),
+                              Expanded(
+                                child: Text(
+                                  question.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: visibleQuestions.isEmpty
+                          ? 'Sin resultados'
+                          : 'Pregunta',
+                    ),
+                    onChanged: _isGameOver || _remainingQuestions <= 0
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedQuestionId = value;
+                            });
+                          },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  tooltip: selectedQuestion == null
+                      ? 'Selecciona una pregunta'
+                      : _favoriteQuestionIds.contains(selectedQuestion.id)
+                      ? 'Quitar de favoritas'
+                      : 'Agregar a favoritas',
+                  onPressed: selectedQuestion == null
+                      ? null
+                      : () => _toggleFavoriteQuestion(selectedQuestion.id),
+                  icon: Icon(
+                    selectedQuestion != null &&
+                            _favoriteQuestionIds.contains(selectedQuestion.id)
+                        ? Icons.star
+                        : Icons.star_border,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             FilledButton.icon(
@@ -419,7 +547,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     );
   }
 
-  _QuestionDefinition? get _selectedQuestion {
+  PokemonQuestionDefinition? get _selectedQuestion {
     for (final question in _questionsForCategory(
       _availableQuestions(),
       _selectedCategory,
@@ -432,20 +560,20 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     return null;
   }
 
-  List<_QuestionDefinition> _availableQuestions([
+  List<PokemonQuestionDefinition> _availableQuestions([
     List<_AskedQuestion>? askedQuestions,
   ]) {
     final askedIds = (askedQuestions ?? _askedQuestions)
         .map((question) => question.question.id)
         .toSet();
 
-    return _buildQuestions().where((question) {
+    return buildPokemonQuestions().where((question) {
       return !askedIds.contains(question.id);
     }).toList();
   }
 
   List<String> _availableCategories(
-    List<_QuestionDefinition> availableQuestions,
+    List<PokemonQuestionDefinition> availableQuestions,
   ) {
     return availableQuestions
         .map((question) => question.category)
@@ -453,21 +581,42 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         .toList();
   }
 
-  List<_QuestionDefinition> _questionsForCategory(
-    List<_QuestionDefinition> availableQuestions,
+  List<PokemonQuestionDefinition> _questionsForCategory(
+    List<PokemonQuestionDefinition> availableQuestions,
     String? category,
   ) {
     if (category == null) {
       return const [];
     }
 
-    return availableQuestions
+    final questions = availableQuestions
         .where((question) => question.category == category)
+        .toList();
+    return [
+      ...questions.where(
+        (question) => _favoriteQuestionIds.contains(question.id),
+      ),
+      ...questions.where(
+        (question) => !_favoriteQuestionIds.contains(question.id),
+      ),
+    ];
+  }
+
+  List<PokemonQuestionDefinition> _visibleQuestions(
+    List<PokemonQuestionDefinition> questions,
+  ) {
+    final query = _questionSearchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      return questions;
+    }
+
+    return questions
+        .where((question) => question.label.toLowerCase().contains(query))
         .toList();
   }
 
   int _questionCountForCategory(
-    List<_QuestionDefinition> availableQuestions,
+    List<PokemonQuestionDefinition> availableQuestions,
     String category,
   ) {
     return availableQuestions
@@ -493,217 +642,9 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     ).firstOrNull?.id;
   }
 
-  List<_QuestionDefinition> _buildQuestions() {
-    return [
-      for (var generation = 1; generation <= 9; generation++)
-        _QuestionDefinition(
-          id: 'generation-$generation',
-          category: 'Generacion',
-          label: 'Pertenece a la generacion $generation?',
-          answer: (pokemon) =>
-              (pokemon.generation ?? _generationFromId(pokemon.id)) ==
-              generation,
-        ),
-      for (var generation = 2; generation <= 9; generation++)
-        _QuestionDefinition(
-          id: 'before-generation-$generation',
-          category: 'Generacion',
-          label: 'Salio antes de la generacion $generation?',
-          answer: (pokemon) =>
-              (pokemon.generation ?? _generationFromId(pokemon.id)) <
-              generation,
-        ),
-      for (var generation = 1; generation <= 8; generation++)
-        _QuestionDefinition(
-          id: 'after-generation-$generation',
-          category: 'Generacion',
-          label: 'Salio despues de la generacion $generation?',
-          answer: (pokemon) =>
-              (pokemon.generation ?? _generationFromId(pokemon.id)) >
-              generation,
-        ),
-      for (final type in _pokemonTypes)
-        _QuestionDefinition(
-          id: 'type-$type',
-          category: 'Tipo',
-          label: 'Es de tipo $type?',
-          answer: (pokemon) => pokemon.types.contains(type),
-        ),
-      for (final color in _pokemonColors)
-        _QuestionDefinition(
-          id: 'color-$color',
-          category: 'Color',
-          label: 'Su color principal es $color?',
-          answer: (pokemon) => pokemon.speciesColor == color,
-        ),
-      for (final region in _pokemonRegions)
-        _QuestionDefinition(
-          id: 'region-$region',
-          category: 'Region',
-          label: 'Pertenece a la region de $region?',
-          answer: (pokemon) => pokemon.region == region,
-        ),
-      for (final habitat in _pokemonHabitats)
-        _QuestionDefinition(
-          id: 'habitat-$habitat',
-          category: 'Habitat',
-          label: 'Su habitat habitual es $habitat?',
-          answer: (pokemon) => pokemon.habitat == habitat,
-        ),
-      _QuestionDefinition(
-        id: 'dual-type',
-        category: 'Tipo',
-        label: 'Tiene doble tipo?',
-        answer: (pokemon) => pokemon.types.length >= 2,
-      ),
-      _QuestionDefinition(
-        id: 'mono-type',
-        category: 'Tipo',
-        label: 'Es monotipo?',
-        answer: (pokemon) => pokemon.types.length == 1,
-      ),
-      _QuestionDefinition(
-        id: 'legendary',
-        category: 'Rareza',
-        label: 'Es legendario?',
-        answer: (pokemon) => pokemon.isLegendary,
-      ),
-      _QuestionDefinition(
-        id: 'mythical',
-        category: 'Rareza',
-        label: 'Es mitico?',
-        answer: (pokemon) => pokemon.isMythical,
-      ),
-      _QuestionDefinition(
-        id: 'item-evolution',
-        category: 'Evolucion',
-        label: 'Evoluciona por objeto?',
-        answer: (pokemon) => pokemon.evolvesByItem,
-      ),
-      _QuestionDefinition(
-        id: 'has-evolution',
-        category: 'Evolucion',
-        label: 'Tiene linea evolutiva?',
-        answer: (pokemon) => pokemon.evolutionLine.length > 1,
-      ),
-      _QuestionDefinition(
-        id: 'final-stage',
-        category: 'Evolucion',
-        label: 'Es etapa final?',
-        answer: (pokemon) =>
-            pokemon.evolutionStage == PokemonEvolutionStage.finalStage ||
-            pokemon.evolutionStage == PokemonEvolutionStage.standalone,
-      ),
-      _QuestionDefinition(
-        id: 'alternative-form',
-        category: 'Forma',
-        label: 'Es una forma alternativa?',
-        answer: (pokemon) => pokemon.formLabel != 'Normal',
-      ),
-      for (var stage = 1; stage <= 3; stage++)
-        _QuestionDefinition(
-          id: 'stage-$stage',
-          category: 'Evolucion',
-          label: 'Es etapa evolutiva $stage?',
-          answer: (pokemon) => _stageNumber(pokemon) == stage,
-        ),
-      _QuestionDefinition(
-        id: 'height-small',
-        category: 'Altura',
-        label: 'Mide menos de 1 metro?',
-        answer: (pokemon) => (_metricValue(pokemon.height) ?? 999) < 1,
-      ),
-      _QuestionDefinition(
-        id: 'height-large',
-        category: 'Altura',
-        label: 'Mide 2 metros o mas?',
-        answer: (pokemon) => (_metricValue(pokemon.height) ?? 0) >= 2,
-      ),
-      _QuestionDefinition(
-        id: 'weight-light',
-        category: 'Peso',
-        label: 'Pesa menos de 20 kg?',
-        answer: (pokemon) => (_metricValue(pokemon.weight) ?? 999) < 20,
-      ),
-      _QuestionDefinition(
-        id: 'weight-heavy',
-        category: 'Peso',
-        label: 'Pesa 100 kg o mas?',
-        answer: (pokemon) => (_metricValue(pokemon.weight) ?? 0) >= 100,
-      ),
-      for (final stat in _questionStats)
-        _QuestionDefinition(
-          id: 'top-stat-$stat',
-          category: 'Stats',
-          label: 'Su stat mas alto es $stat?',
-          answer: (pokemon) => _highestStat(pokemon) == stat,
-        ),
-      for (final move in _questionMoves)
-        _QuestionDefinition(
-          id: 'move-${move.apiName}',
-          category: 'Movimiento',
-          label: 'Puede aprender ${move.name}?',
-          answer: (pokemon) => pokemon.moves.any(
-            (pokemonMove) => pokemonMove.apiName == move.apiName,
-          ),
-        ),
-      for (final ability in _questionAbilities)
-        _QuestionDefinition(
-          id: 'ability-${ability.apiName}',
-          category: 'Habilidad',
-          label: 'Puede tener ${ability.name}?',
-          answer: (pokemon) => pokemon.abilities.any(
-            (pokemonAbility) => pokemonAbility.apiName == ability.apiName,
-          ),
-        ),
-    ];
-  }
-
   int _dailyIndex(int length, DateTime date) {
     final seed = date.year * 1000 + date.month * 40 + date.day + 191;
     return seed % length;
-  }
-
-  int _generationFromId(int id) {
-    if (id <= 151) return 1;
-    if (id <= 251) return 2;
-    if (id <= 386) return 3;
-    if (id <= 493) return 4;
-    if (id <= 649) return 5;
-    if (id <= 721) return 6;
-    if (id <= 809) return 7;
-    if (id <= 905) return 8;
-    return 9;
-  }
-
-  int? _stageNumber(PokemonPreview pokemon) {
-    return switch (pokemon.evolutionStage) {
-      PokemonEvolutionStage.standalone || PokemonEvolutionStage.base => 1,
-      PokemonEvolutionStage.middle => 2,
-      PokemonEvolutionStage.finalStage =>
-        pokemon.evolutionLine.length <= 2 ? 2 : 3,
-      PokemonEvolutionStage.unknown => null,
-    };
-  }
-
-  double? _metricValue(String value) {
-    final match = RegExp(r'\d+(\.\d+)?').firstMatch(value);
-    if (match == null) {
-      return null;
-    }
-
-    return double.tryParse(match.group(0)!);
-  }
-
-  String _highestStat(PokemonPreview pokemon) {
-    if (pokemon.stats.isEmpty) {
-      return '-';
-    }
-
-    final stats = [...pokemon.stats]
-      ..sort((first, second) => second.value.compareTo(first.value));
-
-    return stats.first.name;
   }
 
   String _formatDateKey(DateTime date) {
@@ -728,14 +669,35 @@ class _MysteryPokemon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return GameRevealPanel(
+      isRevealed: isRevealed,
+      hidden: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const SizedBox(
+              height: 132,
+              child: Icon(Icons.question_mark, size: 72),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Pokemon oculto',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(dateKey, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+      revealed: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             SizedBox(
-              height: isRevealed ? 168 : 132,
-              child: isRevealed && target.imageUrl != null
+              height: 168,
+              child: target.imageUrl != null
                   ? Image.network(
                       target.imageUrl!,
                       fit: BoxFit.contain,
@@ -743,69 +705,64 @@ class _MysteryPokemon extends StatelessWidget {
                         return const Icon(Icons.catching_pokemon, size: 56);
                       },
                     )
-                  : const Icon(Icons.question_mark, size: 72),
+                  : const Icon(Icons.catching_pokemon, size: 72),
             ),
             const SizedBox(height: 8),
             Text(
-              isRevealed ? target.name : 'Pokemon oculto',
+              target.name,
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             Text(dateKey, style: Theme.of(context).textTheme.bodySmall),
-            if (isRevealed) ...[
-              const SizedBox(height: 16),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final type in target.types)
-                    Chip(
-                      avatar: const Icon(Icons.category_outlined, size: 17),
-                      label: Text(type),
-                    ),
+            const SizedBox(height: 16),
+            PokemonTypeChips(
+              types: target.types,
+              alignment: WrapAlignment.center,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _SummaryChip(
+                  icon: Icons.public,
+                  label: target.region ?? 'Region sin datos',
+                ),
+                if (target.habitat != null)
                   _SummaryChip(
-                    icon: Icons.public,
-                    label: target.region ?? 'Region sin datos',
+                    icon: Icons.landscape_outlined,
+                    label: target.habitat!,
                   ),
-                  if (target.habitat != null)
-                    _SummaryChip(
-                      icon: Icons.landscape_outlined,
-                      label: target.habitat!,
-                    ),
-                  _SummaryChip(
-                    icon: Icons.history,
-                    label: 'Gen ${target.generation ?? '-'}',
+                _SummaryChip(
+                  icon: Icons.history,
+                  label: 'Gen ${target.generation ?? '-'}',
+                ),
+                _SummaryChip(
+                  icon: Icons.auto_awesome_outlined,
+                  label: target.formLabel,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetric(label: 'Altura', value: target.height),
+                ),
+                Expanded(
+                  child: _SummaryMetric(label: 'Peso', value: target.weight),
+                ),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'Stat principal',
+                    value: _highestStatLabel(target),
                   ),
-                  _SummaryChip(
-                    icon: Icons.auto_awesome_outlined,
-                    label: target.formLabel,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SummaryMetric(
-                      label: 'Altura',
-                      value: target.height,
-                    ),
-                  ),
-                  Expanded(
-                    child: _SummaryMetric(label: 'Peso', value: target.weight),
-                  ),
-                  Expanded(
-                    child: _SummaryMetric(
-                      label: 'Stat principal',
-                      value: _highestStatLabel(target),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1027,116 +984,9 @@ class _GuessList extends StatelessWidget {
   }
 }
 
-class _QuestionDefinition {
-  const _QuestionDefinition({
-    required this.id,
-    required this.category,
-    required this.label,
-    required this.answer,
-  });
-
-  final String id;
-  final String category;
-  final String label;
-  final bool Function(PokemonPreview pokemon) answer;
-}
-
 class _AskedQuestion {
   const _AskedQuestion({required this.question, required this.answer});
 
-  final _QuestionDefinition question;
+  final PokemonQuestionDefinition question;
   final bool answer;
-}
-
-const _pokemonTypes = [
-  'Normal',
-  'Fuego',
-  'Agua',
-  'Planta',
-  'Electrico',
-  'Hielo',
-  'Lucha',
-  'Veneno',
-  'Tierra',
-  'Volador',
-  'Psiquico',
-  'Bicho',
-  'Roca',
-  'Fantasma',
-  'Dragon',
-  'Siniestro',
-  'Acero',
-  'Hada',
-];
-
-const _pokemonColors = [
-  'Negro',
-  'Azul',
-  'Marron',
-  'Gris',
-  'Verde',
-  'Rosa',
-  'Violeta',
-  'Rojo',
-  'Blanco',
-  'Amarillo',
-];
-
-const _pokemonRegions = [
-  'Kanto',
-  'Johto',
-  'Hoenn',
-  'Sinnoh',
-  'Teselia',
-  'Kalos',
-  'Alola',
-  'Galar',
-  'Hisui',
-  'Paldea',
-];
-
-const _pokemonHabitats = [
-  'Cuevas',
-  'Bosques',
-  'Praderas',
-  'Montanas',
-  'Lugares raros',
-  'Terreno agreste',
-  'Mar',
-  'Zona urbana',
-  'Orilla del agua',
-];
-
-const _questionStats = [
-  'HP',
-  'Ataque',
-  'Defensa',
-  'Ataque esp.',
-  'Defensa esp.',
-  'Velocidad',
-];
-
-const _questionMoves = [
-  _QuestionMove(name: 'Placaje', apiName: 'tackle'),
-  _QuestionMove(name: 'Aranazo', apiName: 'scratch'),
-  _QuestionMove(name: 'Impactrueno', apiName: 'thunder-shock'),
-];
-
-const _questionAbilities = [
-  _QuestionAbility(name: 'Espesura', apiName: 'overgrow'),
-  _QuestionAbility(name: 'Mar llamas', apiName: 'blaze'),
-];
-
-class _QuestionMove {
-  const _QuestionMove({required this.name, required this.apiName});
-
-  final String name;
-  final String apiName;
-}
-
-class _QuestionAbility {
-  const _QuestionAbility({required this.name, required this.apiName});
-
-  final String name;
-  final String apiName;
 }

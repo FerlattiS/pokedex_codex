@@ -29,12 +29,15 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - POKEDLE PRO permite copiar un resultado textual al portapapeles para compartir.
 - Higher or Lower para elegir cual Pokemon tiene mayor stat, mantener racha, historial visual, modos por alcance/stat y rondas tipo cola.
 - 15 Preguntas como minijuego diario de preguntas si/no con estado local, resultado historico, compartir, preguntas por habitat y region, resumen visual final, selectores de categoria y pregunta, 15 preguntas maximas y 3 intentos de respuesta.
+- 15 Preguntas recuerda categoria, permite buscar/favoritar preguntas y confirma antes de gastar intentos.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.
 - Movimientos agrupados por metodo de aprendizaje.
 - Detalle competitivo de movimientos con tipo, clase, poder, PP y precision.
 - Cache local para catalogo, detalle, habilidades y movimientos de PokeAPI.
+- Cache versionada con vencimiento, limites, fallback offline, estadisticas y limpieza desde Settings.
+- Capa de red con timeout y reintentos breves ante fallos temporales.
 - Repositorio local de datos de usuario para favoritos, notas y equipos.
 - Repositorio local comun de resultados de juegos.
 - Favoritos locales desde tarjetas y detalle de Pokemon.
@@ -49,6 +52,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Interfaz preparada para reemplazar la persistencia local por Supabase.
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 - Guia de publicacion web/mobile en `PUBLICACION.md`.
+- Roadmap priorizado de producto en `ROADMAP.md`.
 
 ## Falta por hacer
 
