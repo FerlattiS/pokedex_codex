@@ -612,6 +612,25 @@ void main() {
     expect(find.text('Pokemon oculto'), findsOneWidget);
     expect(find.text('Preguntas: 15/15'), findsOneWidget);
     expect(find.text('Intentos: 3/3'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('pokemonQuestionsCategoryField')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('pokemonQuestionsQuestionField')),
+      findsOneWidget,
+    );
+    expect(find.text('Generacion (25)'), findsOneWidget);
+    expect(find.text('Pertenece a la generacion 1?'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('pokemonQuestionsCategoryField')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tipo (20)').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Es de tipo Normal?'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('pokemonQuestionsGuessField')),
       120,
@@ -625,6 +644,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Preguntas: 14/15'), findsOneWidget);
+    expect(find.text('Tipo (19)'), findsOneWidget);
+    expect(find.text('Es de tipo Fuego?'), findsOneWidget);
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Preguntas realizadas'), findsOneWidget);

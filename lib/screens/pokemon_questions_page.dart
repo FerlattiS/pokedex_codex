@@ -38,6 +38,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   List<PokemonPreview> _guesses = [];
   PokemonPreview? _target;
   PokemonPreview? _selectedPokemon;
+  String? _selectedCategory;
   String? _selectedQuestionId;
   var _hasWon = false;
   var _resultWasSaved = false;
@@ -101,7 +102,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
       _guesses = guesses;
       _hasWon = guesses.any((guess) => guess.id == target.id);
       _resultWasSaved = _isGameOver;
-      _selectedQuestionId = _availableQuestions(askedQuestions).firstOrNull?.id;
+      _selectAvailableQuestion(askedQuestions: askedQuestions);
     });
   }
 
@@ -122,7 +123,10 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
 
     setState(() {
       _askedQuestions = nextAsked;
-      _selectedQuestionId = _availableQuestions(nextAsked).firstOrNull?.id;
+      _selectAvailableQuestion(
+        askedQuestions: nextAsked,
+        preferredCategory: question.category,
+      );
     });
 
     await _persistState(askedQuestions: nextAsked);
@@ -260,7 +264,12 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         }
 
         final target = _target!;
-        final questions = _availableQuestions();
+        final availableQuestions = _availableQuestions();
+        final categories = _availableCategories(availableQuestions);
+        final questions = _questionsForCategory(
+          availableQuestions,
+          _selectedCategory,
+        );
         final selectedQuestion = _selectedQuestion;
 
         return ListView(
@@ -316,6 +325,39 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
             ],
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
+              key: const ValueKey('pokemonQuestionsCategoryField'),
+              isExpanded: true,
+              initialValue: _selectedCategory,
+              items: [
+                for (final category in categories)
+                  DropdownMenuItem(
+                    value: category,
+                    child: Text(
+                      '$category (${_questionCountForCategory(availableQuestions, category)})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Categoria',
+              ),
+              onChanged: _isGameOver || _remainingQuestions <= 0
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _selectedCategory = value;
+                        _selectedQuestionId = _questionsForCategory(
+                          availableQuestions,
+                          value,
+                        ).firstOrNull?.id;
+                      });
+                    },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              key: const ValueKey('pokemonQuestionsQuestionField'),
               isExpanded: true,
               initialValue: selectedQuestion?.id,
               items: [
@@ -323,7 +365,7 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
                   DropdownMenuItem(
                     value: question.id,
                     child: Text(
-                      '${question.category}: ${question.label}',
+                      question.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -378,7 +420,10 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
   }
 
   _QuestionDefinition? get _selectedQuestion {
-    for (final question in _availableQuestions()) {
+    for (final question in _questionsForCategory(
+      _availableQuestions(),
+      _selectedCategory,
+    )) {
       if (question.id == _selectedQuestionId) {
         return question;
       }
@@ -397,6 +442,55 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
     return _buildQuestions().where((question) {
       return !askedIds.contains(question.id);
     }).toList();
+  }
+
+  List<String> _availableCategories(
+    List<_QuestionDefinition> availableQuestions,
+  ) {
+    return availableQuestions
+        .map((question) => question.category)
+        .toSet()
+        .toList();
+  }
+
+  List<_QuestionDefinition> _questionsForCategory(
+    List<_QuestionDefinition> availableQuestions,
+    String? category,
+  ) {
+    if (category == null) {
+      return const [];
+    }
+
+    return availableQuestions
+        .where((question) => question.category == category)
+        .toList();
+  }
+
+  int _questionCountForCategory(
+    List<_QuestionDefinition> availableQuestions,
+    String category,
+  ) {
+    return availableQuestions
+        .where((question) => question.category == category)
+        .length;
+  }
+
+  void _selectAvailableQuestion({
+    List<_AskedQuestion>? askedQuestions,
+    String? preferredCategory,
+  }) {
+    final availableQuestions = _availableQuestions(askedQuestions);
+    final categories = _availableCategories(availableQuestions);
+    final category =
+        preferredCategory != null && categories.contains(preferredCategory)
+        ? preferredCategory
+        : categories.firstOrNull;
+
+    _selectedCategory = category;
+    _selectedQuestionId = _questionsForCategory(
+      availableQuestions,
+      category,
+    ).firstOrNull?.id;
   }
 
   List<_QuestionDefinition> _buildQuestions() {
@@ -444,13 +538,13 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
         ),
       _QuestionDefinition(
         id: 'dual-type',
-        category: 'Tipos',
+        category: 'Tipo',
         label: 'Tiene doble tipo?',
         answer: (pokemon) => pokemon.types.length >= 2,
       ),
       _QuestionDefinition(
         id: 'mono-type',
-        category: 'Tipos',
+        category: 'Tipo',
         label: 'Es monotipo?',
         answer: (pokemon) => pokemon.types.length == 1,
       ),

@@ -110,13 +110,13 @@ Minijuego diario implementado:
   despues de determinada generacion.
 - Tambien hay preguntas por altura, peso, stat mas alto, habilidades y
   movimientos comunes.
+- La interfaz separa la categoria de la pregunta en dos selectores y muestra
+  cuantas opciones quedan disponibles dentro de cada categoria.
 
 Pendientes:
 
-- Agregar estadisticas al perfil cuando exista el perfil de juegos.
 - Mejorar el set de preguntas con habitat o region.
-- Separar preguntas por categorias para que la interfaz escale mejor.
-- Agregar boton de compartir resultado.
+- Ampliar movimientos y habilidades disponibles sin volver lenta la carga.
 
 ## Perfil de juegos
 
