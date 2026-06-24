@@ -201,11 +201,24 @@ Implementado:
 
 Paso manual pendiente en GitHub:
 
-1. Abrir `Settings > Pages`.
-2. En `Build and deployment`, elegir `GitHub Actions`.
-3. Pushear la rama `web-beta` o ejecutar manualmente `Deploy web beta`.
-4. Esperar que finalice el workflow.
+El repositorio es privado y GitHub Pages no esta disponible para repositorios
+privados con el plan actual. Hay dos caminos gratuitos:
+
+### Opcion A: GitHub Pages
+
+1. Cambiar el repositorio a publico.
+2. Abrir `Settings > Pages`.
+3. En `Build and deployment`, elegir `GitHub Actions`.
+4. Ejecutar manualmente `Deploy web beta`.
 5. Abrir `https://ferlattis.github.io/pokedex_codex/`.
+
+Cuando Pages quede habilitado se puede volver a activar el despliegue automatico
+en cada push a `web-beta`.
+
+### Opcion B: mantener el repositorio privado
+
+Usar Cloudflare Pages, Netlify o Vercel conectando el repositorio privado. El
+build command es el mismo y el directorio de salida es `build/web`.
 
 Build local equivalente:
 

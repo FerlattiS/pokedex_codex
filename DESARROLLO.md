@@ -72,8 +72,10 @@ El workflow se ejecuta en pushes a ramas principales y en pull requests.
 
 ## Beta web
 
-`.github/workflows/deploy-pages.yml` publica automáticamente la rama
-`web-beta` en GitHub Pages.
+`.github/workflows/deploy-pages.yml` contiene el despliegue a GitHub Pages y se
+ejecuta manualmente. GitHub Pages requiere que este repositorio sea publico con
+el plan actual. Cuando Pages este habilitado se puede agregar nuevamente el
+trigger por push a `web-beta`.
 
 Build equivalente local:
 
