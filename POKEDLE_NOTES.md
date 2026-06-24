@@ -112,10 +112,12 @@ Minijuego diario implementado:
   movimientos comunes.
 - La interfaz separa la categoria de la pregunta en dos selectores y muestra
   cuantas opciones quedan disponibles dentro de cada categoria.
+- Incluye preguntas por habitat y region de origen.
+- Al terminar revela un resumen visual con tipos, region, habitat, generacion,
+  forma, altura, peso y stat principal.
 
 Pendientes:
 
-- Mejorar el set de preguntas con habitat o region.
 - Ampliar movimientos y habilidades disponibles sin volver lenta la carga.
 
 ## Perfil de juegos

@@ -536,6 +536,20 @@ class _PokemonQuestionsPageState extends State<PokemonQuestionsPage> {
           label: 'Su color principal es $color?',
           answer: (pokemon) => pokemon.speciesColor == color,
         ),
+      for (final region in _pokemonRegions)
+        _QuestionDefinition(
+          id: 'region-$region',
+          category: 'Region',
+          label: 'Pertenece a la region de $region?',
+          answer: (pokemon) => pokemon.region == region,
+        ),
+      for (final habitat in _pokemonHabitats)
+        _QuestionDefinition(
+          id: 'habitat-$habitat',
+          category: 'Habitat',
+          label: 'Su habitat habitual es $habitat?',
+          answer: (pokemon) => pokemon.habitat == habitat,
+        ),
       _QuestionDefinition(
         id: 'dual-type',
         category: 'Tipo',
@@ -720,7 +734,7 @@ class _MysteryPokemon extends StatelessWidget {
         child: Column(
           children: [
             SizedBox(
-              height: 132,
+              height: isRevealed ? 168 : 132,
               child: isRevealed && target.imageUrl != null
                   ? Image.network(
                       target.imageUrl!,
@@ -740,8 +754,115 @@ class _MysteryPokemon extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(dateKey, style: Theme.of(context).textTheme.bodySmall),
+            if (isRevealed) ...[
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final type in target.types)
+                    Chip(
+                      avatar: const Icon(Icons.category_outlined, size: 17),
+                      label: Text(type),
+                    ),
+                  _SummaryChip(
+                    icon: Icons.public,
+                    label: target.region ?? 'Region sin datos',
+                  ),
+                  if (target.habitat != null)
+                    _SummaryChip(
+                      icon: Icons.landscape_outlined,
+                      label: target.habitat!,
+                    ),
+                  _SummaryChip(
+                    icon: Icons.history,
+                    label: 'Gen ${target.generation ?? '-'}',
+                  ),
+                  _SummaryChip(
+                    icon: Icons.auto_awesome_outlined,
+                    label: target.formLabel,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SummaryMetric(
+                      label: 'Altura',
+                      value: target.height,
+                    ),
+                  ),
+                  Expanded(
+                    child: _SummaryMetric(label: 'Peso', value: target.weight),
+                  ),
+                  Expanded(
+                    child: _SummaryMetric(
+                      label: 'Stat principal',
+                      value: _highestStatLabel(target),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  String _highestStatLabel(PokemonPreview pokemon) {
+    if (pokemon.stats.isEmpty) {
+      return '-';
+    }
+
+    final stats = [...pokemon.stats]
+      ..sort((first, second) => second.value.compareTo(first.value));
+    return '${stats.first.name} ${stats.first.value}';
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(avatar: Icon(icon, size: 17), label: Text(label));
+  }
+}
+
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -959,6 +1080,31 @@ const _pokemonColors = [
   'Rojo',
   'Blanco',
   'Amarillo',
+];
+
+const _pokemonRegions = [
+  'Kanto',
+  'Johto',
+  'Hoenn',
+  'Sinnoh',
+  'Teselia',
+  'Kalos',
+  'Alola',
+  'Galar',
+  'Hisui',
+  'Paldea',
+];
+
+const _pokemonHabitats = [
+  'Cuevas',
+  'Bosques',
+  'Praderas',
+  'Montanas',
+  'Lugares raros',
+  'Terreno agreste',
+  'Mar',
+  'Zona urbana',
+  'Orilla del agua',
 ];
 
 const _questionStats = [

@@ -65,6 +65,9 @@ void main() {
               "color": {
                 "name": "green"
               },
+              "habitat": {
+                "name": "grassland"
+              },
               "flavor_text_entries": [
                 {
                   "flavor_text": "Una rara semilla fue plantada en su lomo al nacer.",
@@ -169,6 +172,8 @@ void main() {
     );
     expect(pokemon.generation, 1);
     expect(pokemon.speciesColor, 'Verde');
+    expect(pokemon.habitat, 'Praderas');
+    expect(pokemon.region, 'Kanto');
     expect(pokemon.formLabel, 'Normal');
     expect(pokemon.abilities.first.name, 'Overgrow');
     expect(pokemon.abilities.first.apiName, 'overgrow');
@@ -241,6 +246,9 @@ void main() {
               "color": {
                 "name": "brown"
               },
+              "habitat": {
+                "name": "rough-terrain"
+              },
               "flavor_text_entries": [
                 {
                   "flavor_text": "Forma un trio bajo tierra.",
@@ -291,6 +299,8 @@ void main() {
     expect(pokemon.name, 'Dugtrio Alola');
     expect(pokemon.generation, 7);
     expect(pokemon.speciesColor, 'Marron');
+    expect(pokemon.habitat, 'Terreno agreste');
+    expect(pokemon.region, 'Alola');
     expect(pokemon.formLabel, 'Alola');
     expect(pokemon.evolutionStage, PokemonEvolutionStage.finalStage);
     expect(pokemon.evolutionLine.map((step) => step.name), [
@@ -314,6 +324,9 @@ void main() {
               },
               "color": {
                 "name": "yellow"
+              },
+              "habitat": {
+                "name": "forest"
               },
               "evolution_chain": {
                 "url": "https://pokeapi.co/api/v2/evolution-chain/10/"
@@ -375,6 +388,8 @@ void main() {
     expect(metadata.name, 'Pikachu');
     expect(metadata.generation, 1);
     expect(metadata.speciesColor, 'Amarillo');
+    expect(metadata.habitat, 'Bosques');
+    expect(metadata.region, 'Kanto');
     expect(metadata.isLegendary, isTrue);
     expect(metadata.isMythical, isFalse);
     expect(metadata.evolvesByItem, isTrue);

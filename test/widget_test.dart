@@ -5,6 +5,7 @@ import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
 import 'package:pokedex_codex/models/user_pokemon_data.dart';
 import 'package:pokedex_codex/screens/pokedle_page.dart';
+import 'package:pokedex_codex/screens/pokemon_questions_page.dart';
 import 'package:pokedex_codex/services/game_results_repository.dart';
 import 'package:pokedex_codex/services/pokedle_progress_repository.dart';
 import 'package:pokedex_codex/services/pokemon_questions_progress_repository.dart';
@@ -734,6 +735,42 @@ void main() {
     expect(result?.attempts, 2);
   });
 
+  testWidgets('Shows a Pokemon summary when 15 Preguntas finishes', (
+    WidgetTester tester,
+  ) async {
+    final progressRepository = MemoryPokemonQuestionsProgressRepository();
+    await progressRepository.writeState(
+      const PokemonQuestionsGameState(
+        sessionKey: '2026-06-22',
+        guessIds: [1, 4, 7],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PokemonQuestionsPage(
+            pokemonRepository: pokemonRepository,
+            progressRepository: progressRepository,
+            gameResultsRepository: MemoryGameResultsRepository(),
+            date: DateTime(2026, 6, 22),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin intentos: era Pikachu'), findsOneWidget);
+    expect(find.text('Pikachu'), findsOneWidget);
+    expect(find.text('Kanto'), findsOneWidget);
+    expect(find.text('Bosques'), findsOneWidget);
+    expect(find.text('Gen 1'), findsOneWidget);
+    expect(find.text('Normal'), findsOneWidget);
+    expect(find.text('0.4 m'), findsOneWidget);
+    expect(find.text('6.0 kg'), findsOneWidget);
+    expect(find.text('Velocidad 90'), findsOneWidget);
+  });
+
   testWidgets('Switches between light and dark mode', (
     WidgetTester tester,
   ) async {
@@ -977,6 +1014,8 @@ class _FakePokemonRepository implements PokemonRepository {
         weight: '8.5 kg',
         generation: 1,
         speciesColor: 'Rojo',
+        habitat: 'Montanas',
+        region: 'Kanto',
         abilities: [PokemonAbility(name: 'Mar llamas', apiName: 'blaze')],
         stats: [
           PokemonStat(name: 'HP', value: 39),
@@ -1012,6 +1051,8 @@ class _FakePokemonRepository implements PokemonRepository {
         evolvesByItem: true,
         generation: 1,
         speciesColor: 'Amarillo',
+        habitat: 'Bosques',
+        region: 'Kanto',
         evolutionStage: PokemonEvolutionStage.middle,
         stats: [
           PokemonStat(name: 'HP', value: 35),
@@ -1048,6 +1089,8 @@ class _FakePokemonRepository implements PokemonRepository {
         weight: '6.9 kg',
         generation: 1,
         speciesColor: 'Verde',
+        habitat: 'Praderas',
+        region: 'Kanto',
         abilities: [PokemonAbility(name: 'Espesura', apiName: 'overgrow')],
         stats: [
           PokemonStat(name: 'HP', value: 45),

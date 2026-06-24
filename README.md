@@ -28,7 +28,7 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - POKEDLE PRO con Pokemon diario, intentos locales, comparacion de atributos, color, forma, modos Gen 1-2/Todos y dificultad facil/dificil.
 - POKEDLE PRO permite copiar un resultado textual al portapapeles para compartir.
 - Higher or Lower para elegir cual Pokemon tiene mayor stat, mantener racha, historial visual, modos por alcance/stat y rondas tipo cola.
-- 15 Preguntas como minijuego diario de preguntas si/no con estado local, resultado historico, compartir, selectores de categoria y pregunta, 15 preguntas maximas y 3 intentos de respuesta.
+- 15 Preguntas como minijuego diario de preguntas si/no con estado local, resultado historico, compartir, preguntas por habitat y region, resumen visual final, selectores de categoria y pregunta, 15 preguntas maximas y 3 intentos de respuesta.
 - Pantalla de detalle de Pokemon con descripcion, tipos, altura, peso, habilidades, stats y movimientos.
 - Linea evolutiva en el detalle con metodo de evolucion.
 - Dialogo de habilidad con descripcion, nombre en ingles y detalle tecnico.

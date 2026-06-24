@@ -19,6 +19,8 @@ class PokemonPreview {
     this.evolvesByItem = false,
     this.generation,
     this.speciesColor,
+    this.habitat,
+    this.region,
     this.formLabel = 'Normal',
     this.evolutionStage = PokemonEvolutionStage.unknown,
     this.evolutionLine = const [],
@@ -43,6 +45,8 @@ class PokemonPreview {
   final bool evolvesByItem;
   final int? generation;
   final String? speciesColor;
+  final String? habitat;
+  final String? region;
   final String formLabel;
   final PokemonEvolutionStage evolutionStage;
   final List<PokemonEvolutionStep> evolutionLine;
@@ -67,6 +71,8 @@ class PokemonPreview {
     bool? evolvesByItem,
     int? generation,
     String? speciesColor,
+    String? habitat,
+    String? region,
     String? formLabel,
     PokemonEvolutionStage? evolutionStage,
     List<PokemonEvolutionStep>? evolutionLine,
@@ -91,6 +97,8 @@ class PokemonPreview {
       evolvesByItem: evolvesByItem ?? this.evolvesByItem,
       generation: generation ?? this.generation,
       speciesColor: speciesColor ?? this.speciesColor,
+      habitat: habitat ?? this.habitat,
+      region: region ?? this.region,
       formLabel: formLabel ?? this.formLabel,
       evolutionStage: evolutionStage ?? this.evolutionStage,
       evolutionLine: evolutionLine ?? this.evolutionLine,
@@ -118,6 +126,8 @@ class PokemonPreview {
       'evolvesByItem': evolvesByItem,
       'generation': generation,
       'speciesColor': speciesColor,
+      'habitat': habitat,
+      'region': region,
       'formLabel': formLabel,
       'evolutionStage': evolutionStage.name,
       'evolutionLine': evolutionLine.map((step) => step.toJson()).toList(),
@@ -156,6 +166,8 @@ class PokemonPreview {
       evolvesByItem: json['evolvesByItem'] as bool? ?? false,
       generation: json['generation'] as int?,
       speciesColor: json['speciesColor'] as String?,
+      habitat: json['habitat'] as String?,
+      region: json['region'] as String?,
       formLabel: json['formLabel'] as String? ?? 'Normal',
       evolutionStage: PokemonEvolutionStage.fromName(
         json['evolutionStage'] as String?,

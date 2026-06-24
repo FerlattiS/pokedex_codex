@@ -162,6 +162,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     if (cachedDetail != null &&
         cachedDetail.generation != null &&
         cachedDetail.speciesColor != null &&
+        cachedDetail.region != null &&
         cachedDetail.formLabel.isNotEmpty &&
         cachedDetail.evolutionLine.isNotEmpty) {
       return cachedDetail;
@@ -204,6 +205,7 @@ class PokeApiPokemonRepository implements PokemonRepository {
     if (storedDetail != null &&
         storedDetail.generation != null &&
         storedDetail.speciesColor != null &&
+        storedDetail.region != null &&
         storedDetail.formLabel.isNotEmpty) {
       _detailCache[id] = storedDetail;
 
@@ -263,6 +265,8 @@ class PokeApiPokemonRepository implements PokemonRepository {
       evolvesByItem: metadata.evolvesByItem,
       generation: metadata.generation,
       speciesColor: metadata.speciesColor,
+      habitat: metadata.habitat,
+      region: metadata.region,
       formLabel: metadata.formLabel,
       evolutionStage: metadata.evolutionStage,
       evolutionLine: metadata.evolutionLine,
@@ -528,15 +532,20 @@ class PokeApiPokemonRepository implements PokemonRepository {
       }
     }
 
+    final generation = _readGeneration(speciesData, pokemonApiName, pokemonId);
+    final formLabel = _readFormLabel(pokemonApiName);
+
     return PokemonPreview(
       id: pokemonId,
       name: _formatName(speciesName),
       isLegendary: speciesData['is_legendary'] as bool? ?? false,
       isMythical: speciesData['is_mythical'] as bool? ?? false,
       evolvesByItem: evolvesByItem,
-      generation: _readGeneration(speciesData, pokemonApiName, pokemonId),
+      generation: generation,
       speciesColor: _readSpeciesColor(speciesData),
-      formLabel: _readFormLabel(pokemonApiName),
+      habitat: _readHabitat(speciesData),
+      region: _readRegion(generation, formLabel),
+      formLabel: formLabel,
       evolutionStage: evolutionStage,
       evolutionLine: evolutionLine,
     );
@@ -882,6 +891,48 @@ class PokeApiPokemonRepository implements PokemonRepository {
       'white' => 'Blanco',
       'yellow' => 'Amarillo',
       _ => _formatName(colorName),
+    };
+  }
+
+  String? _readHabitat(Map<String, dynamic> speciesData) {
+    final habitat = speciesData['habitat'] as Map<String, dynamic>?;
+    final habitatName = habitat?['name'] as String?;
+    if (habitatName == null) {
+      return null;
+    }
+
+    return switch (habitatName) {
+      'cave' => 'Cuevas',
+      'forest' => 'Bosques',
+      'grassland' => 'Praderas',
+      'mountain' => 'Montanas',
+      'rare' => 'Lugares raros',
+      'rough-terrain' => 'Terreno agreste',
+      'sea' => 'Mar',
+      'urban' => 'Zona urbana',
+      'waters-edge' => 'Orilla del agua',
+      _ => _formatName(habitatName),
+    };
+  }
+
+  String _readRegion(int generation, String formLabel) {
+    return switch (formLabel) {
+      'Alola' => 'Alola',
+      'Galar' || 'Gmax' => 'Galar',
+      'Hisui' => 'Hisui',
+      'Paldea' || 'Luna Carmesi' => 'Paldea',
+      _ => switch (generation) {
+        1 => 'Kanto',
+        2 => 'Johto',
+        3 => 'Hoenn',
+        4 => 'Sinnoh',
+        5 => 'Teselia',
+        6 => 'Kalos',
+        7 => 'Alola',
+        8 => 'Galar',
+        9 => 'Paldea',
+        _ => 'Desconocida',
+      },
     };
   }
 
