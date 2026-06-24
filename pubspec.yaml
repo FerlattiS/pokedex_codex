@@ -37,6 +37,7 @@ dependencies:
   http: ^1.6.0
   shared_preferences: ^2.5.5
   supabase: ^2.13.0
+  go_router: ^17.3.0
 
 dev_dependencies:
   flutter_test:

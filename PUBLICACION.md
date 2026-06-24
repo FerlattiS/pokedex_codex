@@ -189,14 +189,36 @@ formularios de privacidad aunque la app sea gratuita.
 
 ## Checklist minimo para una demo publica web
 
-1. Agregar disclaimer en README y About us.
-2. Revisar que no haya claves privadas en el repo.
-3. Confirmar que Supabase funciona como opcional.
-4. Correr `flutter analyze` y `flutter test`.
-5. Generar build web con `flutter build web --base-href /pokedex_codex/`.
-6. Publicar en GitHub Pages o hosting estatico gratis.
-7. Compartir el link para feedback.
-8. Anotar bugs y mejoras antes de pensar en tiendas.
+Implementado:
+
+1. Disclaimer en README y About us.
+2. Supabase opcional y sin claves incluidas.
+3. Metadatos, iconos y manifest PWA propios.
+4. Rutas compartibles mediante hash.
+5. Entornos `development`, `beta` y `production`.
+6. CI con analisis, tests y build web.
+7. Workflow de GitHub Pages para la rama `web-beta`.
+
+Paso manual pendiente en GitHub:
+
+1. Abrir `Settings > Pages`.
+2. En `Build and deployment`, elegir `GitHub Actions`.
+3. Pushear la rama `web-beta` o ejecutar manualmente `Deploy web beta`.
+4. Esperar que finalice el workflow.
+5. Abrir `https://ferlattis.github.io/pokedex_codex/`.
+
+Build local equivalente:
+
+```bash
+flutter build web \
+  --release \
+  --base-href /pokedex_codex/ \
+  --dart-define=APP_ENV=beta \
+  --dart-define=APP_VERSION=local
+```
+
+La beta no incluye credenciales de Supabase. Favoritos, preferencias e
+historial quedan guardados en el navegador de cada persona.
 
 ## Fuentes utiles
 

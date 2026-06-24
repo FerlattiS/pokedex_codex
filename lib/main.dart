@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'navigation/app_router.dart';
 import 'screens/app_shell.dart';
 import 'services/app_settings_repository.dart';
 import 'services/game_results_repository.dart';
@@ -72,6 +74,47 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late var _themeMode = widget.initialThemeMode;
+  late final PokemonRepository _pokemonRepository;
+  late final UserDataRepository _userDataRepository;
+  late final PokedleProgressRepository _pokedleProgressRepository;
+  late final GameResultsRepository _gameResultsRepository;
+  late final PokemonQuestionsProgressRepository
+  _pokemonQuestionsProgressRepository;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _pokemonRepository = widget.pokemonRepository ?? PokeApiPokemonRepository();
+    _userDataRepository =
+        widget.userDataRepository ?? MemoryUserDataRepository();
+    _pokedleProgressRepository =
+        widget.pokedleProgressRepository ?? MemoryPokedleProgressRepository();
+    _gameResultsRepository =
+        widget.gameResultsRepository ?? MemoryGameResultsRepository();
+    _pokemonQuestionsProgressRepository =
+        widget.pokemonQuestionsProgressRepository ??
+        MemoryPokemonQuestionsProgressRepository();
+    _router = createAppRouter(
+      shellBuilder: (context, destination) {
+        return AppShell(
+          pokemonRepository: _pokemonRepository,
+          userDataRepository: _userDataRepository,
+          pokedleProgressRepository: _pokedleProgressRepository,
+          gameResultsRepository: _gameResultsRepository,
+          pokemonQuestionsProgressRepository:
+              _pokemonQuestionsProgressRepository,
+          pokemonCacheStore: widget.pokemonCacheStore,
+          onDarkModeChanged: _setDarkMode,
+          isSupabaseConfigured: widget.isSupabaseConfigured,
+          selectedDestination: destination,
+          onDestinationSelected: (nextDestination) {
+            context.go(nextDestination.path);
+          },
+        );
+      },
+    );
+  }
 
   void _setDarkMode(bool isDarkMode) {
     final nextThemeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
@@ -88,7 +131,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Pokedex Codex Pro',
       themeMode: _themeMode,
@@ -103,24 +146,7 @@ class _MyAppState extends State<MyApp> {
         ),
         useMaterial3: true,
       ),
-      home: AppShell(
-        pokemonRepository:
-            widget.pokemonRepository ?? PokeApiPokemonRepository(),
-        userDataRepository:
-            widget.userDataRepository ?? MemoryUserDataRepository(),
-        pokedleProgressRepository:
-            widget.pokedleProgressRepository ??
-            MemoryPokedleProgressRepository(),
-        gameResultsRepository:
-            widget.gameResultsRepository ?? MemoryGameResultsRepository(),
-        pokemonQuestionsProgressRepository:
-            widget.pokemonQuestionsProgressRepository ??
-            MemoryPokemonQuestionsProgressRepository(),
-        pokemonCacheStore: widget.pokemonCacheStore,
-        isDarkMode: _themeMode == ThemeMode.dark,
-        onDarkModeChanged: _setDarkMode,
-        isSupabaseConfigured: widget.isSupabaseConfigured,
-      ),
+      routerConfig: _router,
     );
   }
 }

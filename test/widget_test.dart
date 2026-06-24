@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:pokedex_codex/main.dart';
 import 'package:pokedex_codex/models/pokemon_preview.dart';
@@ -36,6 +37,22 @@ void main() {
     expect(find.byIcon(Icons.add), findsNothing);
     expect(find.byIcon(Icons.view_list), findsOneWidget);
     expect(find.byIcon(Icons.grid_view), findsOneWidget);
+  });
+
+  testWidgets('Updates the route when opening a main destination', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(MyApp(pokemonRepository: pokemonRepository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Juegos'));
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.text('Juegos').first);
+    expect(
+      GoRouter.of(context).routeInformationProvider.value.uri.path,
+      '/games',
+    );
   });
 
   testWidgets('Filters Pokemon by name across the loaded catalog', (
@@ -499,12 +516,19 @@ void main() {
     expect(find.text('Supabase'), findsOneWidget);
     expect(find.text('No configurado'), findsOneWidget);
     expect(find.text('Datos locales'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Cache de PokeAPI'),
+      120,
+      scrollable: _firstListScrollView(),
+    );
     expect(find.text('Cache de PokeAPI'), findsOneWidget);
     expect(
       find.text('Se guarda localmente en este dispositivo.'),
       findsOneWidget,
     );
 
+    await tester.drag(find.byType(ListView).first, const Offset(0, 700));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
 
@@ -820,6 +844,35 @@ void main() {
 
     expect(find.text('Usar un intento?'), findsNothing);
     expect(find.text('Intentos: 3/3'), findsOneWidget);
+  });
+
+  testWidgets('15 Preguntas fits a compact mobile viewport', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PokemonQuestionsPage(
+            pokemonRepository: pokemonRepository,
+            progressRepository: MemoryPokemonQuestionsProgressRepository(),
+            gameResultsRepository: MemoryGameResultsRepository(),
+            date: DateTime(2026, 6, 22),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Adivinar'),
+      120,
+      scrollable: _firstListScrollView(),
+    );
+
+    expect(find.text('Adivinar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Switches between light and dark mode', (

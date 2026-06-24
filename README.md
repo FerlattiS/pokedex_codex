@@ -9,6 +9,8 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 ## Estado actual
 
 - Proyecto Flutter configurado con Material 3.
+- Navegacion por rutas con URLs compartibles para cada seccion.
+- Entornos de compilacion para desarrollo, beta y produccion.
 - Pantalla principal con catalogo completo de Pokemon desde PokeAPI.
 - Carga inicial optimizada con datos livianos y cache en memoria.
 - Busqueda por nombre.
@@ -53,6 +55,9 @@ Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelan
 - Pruebas de widgets y repositorio actualizadas para los flujos principales.
 - Guia de publicacion web/mobile en `PUBLICACION.md`.
 - Roadmap priorizado de producto en `ROADMAP.md`.
+- Guia tecnica de arquitectura y expansion en `DESARROLLO.md`.
+- CI y despliegue automatico de la rama `web-beta` a GitHub Pages.
+- Identidad PWA propia con iconos, manifest y pantalla de carga.
 
 ## Falta por hacer
 

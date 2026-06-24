@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app/app_environment.dart';
 import '../services/pokemon_cache_store.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -85,6 +86,26 @@ class _SettingsPageState extends State<SettingsPage> {
             subtitle: const Text('Se guarda localmente en este dispositivo.'),
             value: widget.isDarkMode,
             onChanged: widget.onDarkModeChanged,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('Aplicacion', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.rocket_launch_outlined),
+                title: const Text('Entorno'),
+                subtitle: Text(AppEnvironment.current.displayName),
+              ),
+              const Divider(height: 1),
+              const ListTile(
+                leading: Icon(Icons.tag),
+                title: Text('Version'),
+                subtitle: Text(AppBuildInfo.version),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),

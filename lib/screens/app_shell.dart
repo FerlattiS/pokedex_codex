@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app/app_environment.dart';
+import '../navigation/app_destination.dart';
 import '../services/game_results_repository.dart';
 import '../services/pokemon_repository.dart';
 import '../services/pokedle_progress_repository.dart';
@@ -18,23 +20,7 @@ import 'placeholder_page.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
 
-enum MainMenuDestination {
-  home,
-  pokedex,
-  favorites,
-  profile,
-  aboutUs,
-  help,
-  settings,
-  games,
-  dailyRandommon,
-  pokedlePro,
-  higherOrLower,
-  pokemonQuestions,
-  quit,
-}
-
-class AppShell extends StatefulWidget {
+class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
     required this.pokemonRepository,
@@ -43,9 +29,10 @@ class AppShell extends StatefulWidget {
     required this.gameResultsRepository,
     required this.pokemonQuestionsProgressRepository,
     this.pokemonCacheStore,
-    required this.isDarkMode,
     required this.onDarkModeChanged,
     required this.isSupabaseConfigured,
+    required this.selectedDestination,
+    required this.onDestinationSelected,
   });
 
   final PokemonRepository pokemonRepository;
@@ -54,90 +41,83 @@ class AppShell extends StatefulWidget {
   final GameResultsRepository gameResultsRepository;
   final PokemonQuestionsProgressRepository pokemonQuestionsProgressRepository;
   final PokemonCacheStore? pokemonCacheStore;
-  final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
   final bool isSupabaseConfigured;
-
-  @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<AppShell> {
-  var _destination = MainMenuDestination.home;
+  final MainMenuDestination selectedDestination;
+  final ValueChanged<MainMenuDestination> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: _destination == MainMenuDestination.pokedlePro
+        title: selectedDestination == MainMenuDestination.pokedlePro
             ? const _PokedleAppBarTitle()
-            : Text(_destination.title),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(child: Text(selectedDestination.title)),
+                  if (AppEnvironment.current != AppEnvironment.production) ...[
+                    const SizedBox(width: 8),
+                    const _EnvironmentBadge(),
+                  ],
+                ],
+              ),
       ),
       drawer: _MainMenuDrawer(
-        selectedDestination: _destination,
-        isDarkMode: widget.isDarkMode,
-        onDarkModeChanged: widget.onDarkModeChanged,
-        onDestinationSelected: (destination) {
-          setState(() {
-            _destination = destination;
-          });
-        },
+        selectedDestination: selectedDestination,
+        isDarkMode: isDarkMode,
+        onDarkModeChanged: onDarkModeChanged,
+        onDestinationSelected: onDestinationSelected,
       ),
-      body: switch (_destination) {
+      body: switch (selectedDestination) {
         MainMenuDestination.home => _MainMenuHomePage(
-          onDestinationSelected: (destination) {
-            setState(() {
-              _destination = destination;
-            });
-          },
+          onDestinationSelected: onDestinationSelected,
         ),
         MainMenuDestination.pokedex => PokedexHomePage(
-          pokemonRepository: widget.pokemonRepository,
-          userDataRepository: widget.userDataRepository,
+          pokemonRepository: pokemonRepository,
+          userDataRepository: userDataRepository,
         ),
         MainMenuDestination.favorites => FavoritesPage(
-          pokemonRepository: widget.pokemonRepository,
-          userDataRepository: widget.userDataRepository,
+          pokemonRepository: pokemonRepository,
+          userDataRepository: userDataRepository,
         ),
         MainMenuDestination.profile => ProfilePage(
-          userDataRepository: widget.userDataRepository,
-          pokedleProgressRepository: widget.pokedleProgressRepository,
-          gameResultsRepository: widget.gameResultsRepository,
-          isSupabaseConfigured: widget.isSupabaseConfigured,
+          userDataRepository: userDataRepository,
+          pokedleProgressRepository: pokedleProgressRepository,
+          gameResultsRepository: gameResultsRepository,
+          isSupabaseConfigured: isSupabaseConfigured,
         ),
         MainMenuDestination.aboutUs => const AboutUsPage(),
         MainMenuDestination.help => const HelpPage(),
         MainMenuDestination.settings => SettingsPage(
-          isDarkMode: widget.isDarkMode,
-          onDarkModeChanged: widget.onDarkModeChanged,
-          isSupabaseConfigured: widget.isSupabaseConfigured,
-          pokemonCacheStore: widget.pokemonCacheStore,
-          onClearPokemonCache: widget.pokemonRepository.clearCache,
+          isDarkMode: isDarkMode,
+          onDarkModeChanged: onDarkModeChanged,
+          isSupabaseConfigured: isSupabaseConfigured,
+          pokemonCacheStore: pokemonCacheStore,
+          onClearPokemonCache: pokemonRepository.clearCache,
         ),
         MainMenuDestination.games => _GamesHomePage(
-          onDestinationSelected: (destination) {
-            setState(() {
-              _destination = destination;
-            });
-          },
+          onDestinationSelected: onDestinationSelected,
         ),
         MainMenuDestination.dailyRandommon => DailyRandommonPage(
-          pokemonRepository: widget.pokemonRepository,
-          userDataRepository: widget.userDataRepository,
+          pokemonRepository: pokemonRepository,
+          userDataRepository: userDataRepository,
         ),
         MainMenuDestination.pokedlePro => PokedlePage(
-          pokemonRepository: widget.pokemonRepository,
-          progressRepository: widget.pokedleProgressRepository,
+          pokemonRepository: pokemonRepository,
+          progressRepository: pokedleProgressRepository,
         ),
         MainMenuDestination.higherOrLower => HigherOrLowerPage(
-          pokemonRepository: widget.pokemonRepository,
-          gameResultsRepository: widget.gameResultsRepository,
+          pokemonRepository: pokemonRepository,
+          gameResultsRepository: gameResultsRepository,
         ),
         MainMenuDestination.pokemonQuestions => PokemonQuestionsPage(
-          pokemonRepository: widget.pokemonRepository,
-          progressRepository: widget.pokemonQuestionsProgressRepository,
-          gameResultsRepository: widget.gameResultsRepository,
+          pokemonRepository: pokemonRepository,
+          progressRepository: pokemonQuestionsProgressRepository,
+          gameResultsRepository: gameResultsRepository,
         ),
         MainMenuDestination.quit => const PlaceholderPage(
           title: 'Quit',
@@ -241,25 +221,53 @@ class _MainMenuHomePage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('Elegi por donde empezar', textAlign: TextAlign.center),
         const SizedBox(height: 20),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: destinations.length,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 320,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.35,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: destinations.length,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 320,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+              ),
+              itemBuilder: (context, index) {
+                final item = destinations[index];
+                return _HomeDestinationCard(
+                  item: item,
+                  onTap: () => onDestinationSelected(item.destination),
+                );
+              },
+            ),
           ),
-          itemBuilder: (context, index) {
-            final item = destinations[index];
-            return _HomeDestinationCard(
-              item: item,
-              onTap: () => onDestinationSelected(item.destination),
-            );
-          },
         ),
       ],
+    );
+  }
+}
+
+class _EnvironmentBadge extends StatelessWidget {
+  const _EnvironmentBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        child: Text(
+          AppEnvironment.current.label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+      ),
     );
   }
 }
@@ -440,23 +448,28 @@ class _GamesHomePage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('Elegí un desafio Pokemon', textAlign: TextAlign.center),
         const SizedBox(height: 20),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: games.length,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 320,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.35,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: games.length,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 320,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+              ),
+              itemBuilder: (context, index) {
+                final item = games[index];
+                return _HomeDestinationCard(
+                  item: item,
+                  onTap: () => onDestinationSelected(item.destination),
+                );
+              },
+            ),
           ),
-          itemBuilder: (context, index) {
-            final item = games[index];
-            return _HomeDestinationCard(
-              item: item,
-              onTap: () => onDestinationSelected(item.destination),
-            );
-          },
         ),
       ],
     );
@@ -550,25 +563,5 @@ class _MainMenuDrawer extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-extension on MainMenuDestination {
-  String get title {
-    return switch (this) {
-      MainMenuDestination.home => 'Menu',
-      MainMenuDestination.pokedex => 'Pokedex Codex Pro',
-      MainMenuDestination.favorites => 'Favoritos',
-      MainMenuDestination.profile => 'Perfil',
-      MainMenuDestination.aboutUs => 'About us',
-      MainMenuDestination.help => 'Help',
-      MainMenuDestination.settings => 'Settings',
-      MainMenuDestination.games => 'Juegos',
-      MainMenuDestination.dailyRandommon => 'Daily Randommon',
-      MainMenuDestination.pokedlePro => 'POKEDLE PRO',
-      MainMenuDestination.higherOrLower => 'Higher or Lower',
-      MainMenuDestination.pokemonQuestions => '15 Preguntas',
-      MainMenuDestination.quit => 'Quit',
-    };
   }
 }

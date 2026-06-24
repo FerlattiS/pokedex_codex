@@ -859,56 +859,68 @@ class _PokemonGuessInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Autocomplete<PokemonPreview>(
-            displayStringForOption: (pokemon) => pokemon.name,
-            optionsBuilder: (value) {
-              final query = value.text.trim().toLowerCase();
-              if (query.isEmpty) {
-                return const Iterable<PokemonPreview>.empty();
-              }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final autocomplete = Autocomplete<PokemonPreview>(
+          displayStringForOption: (pokemon) => pokemon.name,
+          optionsBuilder: (value) {
+            final query = value.text.trim().toLowerCase();
+            if (query.isEmpty) {
+              return const Iterable<PokemonPreview>.empty();
+            }
 
-              return catalog
-                  .where((pokemon) {
-                    return pokemon.name.toLowerCase().contains(query) ||
-                        pokemon.id.toString().padLeft(3, '0').contains(query);
-                  })
-                  .take(12);
-            },
-            fieldViewBuilder:
-                (context, textEditingController, focusNode, onSubmitted) {
-                  if (controller.text != textEditingController.text) {
-                    textEditingController.text = controller.text;
-                  }
+            return catalog
+                .where((pokemon) {
+                  return pokemon.name.toLowerCase().contains(query) ||
+                      pokemon.id.toString().padLeft(3, '0').contains(query);
+                })
+                .take(12);
+          },
+          fieldViewBuilder:
+              (context, textEditingController, focusNode, onSubmitted) {
+                if (controller.text != textEditingController.text) {
+                  textEditingController.text = controller.text;
+                }
 
-                  return TextField(
-                    key: const ValueKey('pokemonQuestionsGuessField'),
-                    enabled: enabled,
-                    controller: textEditingController,
-                    focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Adivinar Pokemon',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onSubmitted: (_) => onSubmit(),
-                  );
-                },
-            onSelected: (pokemon) {
-              controller.text = pokemon.name;
-              onSelected(pokemon);
-            },
-          ),
-        ),
-        const SizedBox(width: 8),
-        FilledButton(
+                return TextField(
+                  key: const ValueKey('pokemonQuestionsGuessField'),
+                  enabled: enabled,
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Adivinar Pokemon',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onSubmitted: (_) => onSubmit(),
+                );
+              },
+          onSelected: (pokemon) {
+            controller.text = pokemon.name;
+            onSelected(pokemon);
+          },
+        );
+        final submitButton = FilledButton(
           onPressed: enabled ? onSubmit : null,
           child: const Text('Adivinar'),
-        ),
-      ],
+        );
+
+        if (constraints.maxWidth < 520) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [autocomplete, const SizedBox(height: 8), submitButton],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: autocomplete),
+            const SizedBox(width: 8),
+            submitButton,
+          ],
+        );
+      },
     );
   }
 }

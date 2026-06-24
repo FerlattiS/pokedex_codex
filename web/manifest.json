@@ -1,12 +1,15 @@
 {
-    "name": "pokedex_codex",
-    "short_name": "pokedex_codex",
+    "name": "Pokedex Codex Pro",
+    "short_name": "Codex Pro",
+    "id": ".",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#151922",
+    "theme_color": "#E11D2E",
+    "description": "Pokedex fan-made con catalogo, favoritos y minijuegos diarios.",
+    "orientation": "any",
+    "categories": ["games", "education", "utilities"],
     "prefer_related_applications": false,
     "icons": [
         {
