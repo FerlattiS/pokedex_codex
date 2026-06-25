@@ -2,6 +2,9 @@ name: Deploy web beta
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - web-beta
 
 permissions:
   contents: read

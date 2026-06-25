@@ -72,10 +72,12 @@ El workflow se ejecuta en pushes a ramas principales y en pull requests.
 
 ## Beta web
 
-`.github/workflows/deploy-pages.yml` contiene el despliegue a GitHub Pages y se
-ejecuta manualmente. GitHub Pages requiere que este repositorio sea publico con
-el plan actual. Cuando Pages este habilitado se puede agregar nuevamente el
-trigger por push a `web-beta`.
+`.github/workflows/deploy-pages.yml` publica la rama `web-beta` en GitHub Pages
+en cada push y tambien admite ejecucion manual.
+
+URL de la beta:
+
+https://ferlattis.github.io/pokedex_codex/
 
 Build equivalente local:
 

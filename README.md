@@ -2,6 +2,15 @@
 
 Aplicacion Pokedex hecha con Flutter para web y Android.
 
+## Beta publica
+
+La version web de prueba esta disponible en:
+
+https://ferlattis.github.io/pokedex_codex/
+
+Se publica automaticamente desde la rama `web-beta` despues de ejecutar
+analisis, pruebas y build release.
+
 ## Objetivo inicial
 
 Construir una Pokedex rapida, clara y extensible que consuma PokeAPI. Mas adelante el proyecto sumara Supabase para autenticacion, favoritos, equipos y notas.

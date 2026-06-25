@@ -199,26 +199,15 @@ Implementado:
 6. CI con analisis, tests y build web.
 7. Workflow de GitHub Pages para la rama `web-beta`.
 
-Paso manual pendiente en GitHub:
+Estado actual:
 
-El repositorio es privado y GitHub Pages no esta disponible para repositorios
-privados con el plan actual. Hay dos caminos gratuitos:
+- Repositorio publico.
+- GitHub Pages habilitado con GitHub Actions.
+- Rama `web-beta` autorizada para desplegar.
+- Publicacion automatica en cada push a `web-beta`.
+- URL: https://ferlattis.github.io/pokedex_codex/
 
-### Opcion A: GitHub Pages
-
-1. Cambiar el repositorio a publico.
-2. Abrir `Settings > Pages`.
-3. En `Build and deployment`, elegir `GitHub Actions`.
-4. Ejecutar manualmente `Deploy web beta`.
-5. Abrir `https://ferlattis.github.io/pokedex_codex/`.
-
-Cuando Pages quede habilitado se puede volver a activar el despliegue automatico
-en cada push a `web-beta`.
-
-### Opcion B: mantener el repositorio privado
-
-Usar Cloudflare Pages, Netlify o Vercel conectando el repositorio privado. El
-build command es el mismo y el directorio de salida es `build/web`.
+El workflow tambien puede ejecutarse manualmente desde la pestana Actions.
 
 Build local equivalente:
 
